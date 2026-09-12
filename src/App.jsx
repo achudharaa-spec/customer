@@ -12,60 +12,6 @@ import ModernToastContainer from './components/ModernToastContainer';
 import { calculateMasterPacks } from './utils/packetEngine';
 import './styles.css';
 
-const INITIAL_MAT_PRODUCTS = [
-  {
-    id: 'mat_sample_1',
-    title: 'Panipat Heavy Cotton Checked Door Mat',
-    category: 'Panipat Mat',
-    baseRate: 1450,
-    unit: 'per Bundle',
-    bundlePieces: 10,
-    bundlesPerPack: 8,
-    compressibility: 0.80,
-    minOrderNotice: 'Purchased per full Bundle (10 Pcs only)',
-    inStock: true,
-    stockStatus: 'IN_STOCK',
-    stockQty: 100,
-    seasonNotice: 'Price may differ based on the season item or the stock quantity',
-    description: 'Premium quality heavy-duty Panipat checked cotton door mat. High water absorption, durable stitching, washable, suitable for home and office entrances.',
-    imageUrl: '/assets/logo.jpg'
-  },
-  {
-    id: 'mat_sample_2',
-    title: 'Export Jacquard Weave Floor Runner Mat',
-    category: 'Export Mat',
-    baseRate: 2800,
-    unit: 'per Bundle',
-    bundlePieces: 10,
-    bundlesPerPack: 10,
-    compressibility: 0.85,
-    minOrderNotice: 'Purchased per full Bundle (10 Pcs only)',
-    inStock: true,
-    stockStatus: 'IN_STOCK',
-    stockQty: 100,
-    seasonNotice: 'Export grade finishing with anti-slip backing',
-    description: 'High-density export quality runner mat. Intricate jacquard pattern, vibrant color fastness, suitable for corridors, hallways, and living rooms.',
-    imageUrl: '/assets/logo.jpg'
-  },
-  {
-    id: 'mat_sample_3',
-    title: 'Local Premium Coir Entrance Mat',
-    category: 'Local Mat',
-    baseRate: 980,
-    unit: 'per Bundle',
-    bundlePieces: 10,
-    bundlesPerPack: 50,
-    compressibility: 0.90,
-    minOrderNotice: 'Purchased per full Bundle (10 Pcs only)',
-    inStock: true,
-    stockStatus: 'IN_STOCK',
-    stockQty: 100,
-    seasonNotice: 'Price may differ based on stock quantity',
-    description: 'Sturdy natural coir entrance mat designed for dirt scraping and heavy foot traffic outdoor entrances.',
-    imageUrl: '/assets/logo.jpg'
-  }
-];
-
 export default function App() {
   const [products, setProducts] = useState([]);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
@@ -79,15 +25,7 @@ export default function App() {
   const [invoiceData, setInvoiceData] = useState({});
 
   useEffect(() => {
-    // 1. Load locally cached products or fallback to initial catalog
-    const cached = JSON.parse(localStorage.getItem('gsco_catalog_products') || '[]');
-    if (cached.length > 0) {
-      setProducts(cached);
-    } else {
-      setProducts(INITIAL_MAT_PRODUCTS);
-    }
-
-    // 2. Listen to real-time events across tabs from Admin
+    // 1. Listen to real-time events across tabs from Admin
     let channel;
     if (typeof window !== 'undefined' && window.BroadcastChannel) {
       channel = new BroadcastChannel('gsco_realtime_channel');
@@ -108,23 +46,15 @@ export default function App() {
       };
     }
 
-    // 3. Live sync products from Firestore
+    // 2. Live sync products strictly 1-to-1 from Firestore (NO MOCK DATA)
     const productsRef = collection(db, 'products');
     const unsubscribeProducts = onSnapshot(productsRef, (snapshot) => {
       const fetched = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data()
       }));
-      if (fetched.length > 0) {
-        setProducts((prev) => {
-          const map = new Map();
-          fetched.forEach((p) => map.set(p.id, p));
-          prev.forEach((p) => {
-            if (!map.has(p.id)) map.set(p.id, p);
-          });
-          return Array.from(map.values());
-        });
-      }
+      setProducts(fetched);
+      localStorage.setItem('gsco_catalog_products', JSON.stringify(fetched));
     }, (error) => {
       console.warn('Firestore customer sync info:', error.message);
     });
@@ -257,7 +187,7 @@ export default function App() {
                 src="/assets/logo.jpg"
                 alt="Govindasamy & Co"
                 className="footer-logo"
-                onError={(e) => { e.target.src = 'https://via.placeholder.com/52?text=GS'; }}
+                onError={(e) => { e.target.style.display = 'none'; }}
               />
               <div>
                 <h4>GOVINDASAMY & CO</h4>
@@ -277,7 +207,7 @@ export default function App() {
             <div className="footer-col footer-col-contacts">
               <p>
                 <i className="fa-solid fa-envelope"></i>
-                <span>sales@govindasamyco.com</span>
+                <span>{import.meta.env.VITE_STORE_EMAIL || 'govindasamy.textitle@gmail.com'}</span>
               </p>
               <p>
                 <i className="fa-solid fa-phone"></i>
@@ -288,7 +218,7 @@ export default function App() {
             {/* WhatsApp Inquiry Pill */}
             <div className="footer-action-col">
               <a
-                href="https://wa.me/919842932756"
+                href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756'}`}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-whatsapp-footer"

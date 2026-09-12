@@ -1,5 +1,8 @@
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
+import QRCode from 'qrcode';
+
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
 
 // Helper to convert image URL to base64 Data URL to guarantee 100% rendering in html2canvas & jsPDF
 async function getBase64Image(url) {
@@ -35,14 +38,11 @@ export async function generatePdfInvoice({
   const orderRef = `GSC-ORD-${Date.now().toString().slice(-6)}`;
   const today = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
 
-  // Calculate items and totals
+  // Calculate items and totals with parallel image preloading
   let grandTotal = 0;
-  const items = [];
-
-  for (let idx = 0; idx < selectedProductIds.length; idx++) {
-    const id = selectedProductIds[idx];
+  const itemPromises = selectedProductIds.map(async (id, idx) => {
     const prod = products.find((p) => p.id === id);
-    if (!prod) continue;
+    if (!prod) return null;
     const qty = itemQuantities[id] || 1;
     const subtotal = prod.baseRate * qty;
     grandTotal += subtotal;
@@ -51,10 +51,17 @@ export async function generatePdfInvoice({
     const hasRealImage = Boolean(prod.imageUrl && !prod.imageUrl.includes('logo.jpg'));
     let prodImgBase64 = null;
     if (hasRealImage) {
-      prodImgBase64 = await getBase64Image(prod.imageUrl);
+      try {
+        prodImgBase64 = await Promise.race([
+          getBase64Image(prod.imageUrl),
+          new Promise((res) => setTimeout(() => res(null), 2500))
+        ]);
+      } catch (_) {
+        prodImgBase64 = null;
+      }
     }
 
-    items.push({
+    return {
       sno: idx + 1,
       title: prod.title,
       category: prod.category || 'Panipat Mat',
@@ -63,23 +70,36 @@ export async function generatePdfInvoice({
       qty,
       rate: prod.baseRate,
       subtotal,
-      hasRealImage,
+      hasRealImage: Boolean(prodImgBase64),
       imageSrc: prodImgBase64
+    };
+  });
+
+  // Preload logo and product images concurrently
+  const [itemsRaw, logoBase64] = await Promise.all([
+    Promise.all(itemPromises),
+    getBase64Image('/assets/logo.jpg')
+  ]);
+  const items = itemsRaw.filter(Boolean);
+
+  // Generate WhatsApp QR code locally in-browser (Zero external API dependency)
+  let qrBase64 = null;
+  try {
+    const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`OrderRef:${orderRef}`)}`;
+    qrBase64 = await QRCode.toDataURL(waUrl, {
+      width: 100,
+      margin: 1,
+      color: { dark: '#031b4e', light: '#ffffff' }
     });
+  } catch (qrErr) {
+    console.warn('Local QR generation error:', qrErr);
   }
-
-  // Preload Logo image as base64 for Header
-  const logoBase64 = await getBase64Image('/assets/logo.jpg');
-
-  // Preload WhatsApp QR code as base64
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`https://wa.me/919842932756?text=OrderRef:${orderRef}`)}`;
-  const qrBase64 = await getBase64Image(qrUrl);
 
   // Create an off-screen A4 container formatted at standard A4 aspect ratio (794px x 1123px)
   const printContainer = document.createElement('div');
   printContainer.id = 'invoice-print-container';
   printContainer.style.position = 'fixed';
-  printContainer.style.left = '0';
+  printContainer.style.left = '-9999px';
   printContainer.style.top = '0';
   printContainer.style.width = '794px';
   printContainer.style.minHeight = '1123px';
@@ -89,7 +109,8 @@ export async function generatePdfInvoice({
   printContainer.style.padding = '20px 24px';
   printContainer.style.boxSizing = 'border-box';
   printContainer.style.zIndex = '-9999';
-  printContainer.style.opacity = '0';
+  printContainer.style.opacity = '1';
+  printContainer.style.visibility = 'visible';
   printContainer.style.pointerEvents = 'none';
 
   printContainer.innerHTML = `

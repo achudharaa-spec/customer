@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
+
 export default function TopNav({
   searchQuery,
   setSearchQuery,
@@ -39,7 +41,7 @@ export default function TopNav({
                 src="/assets/logo.jpg"
                 alt="Govindasamy & Co Logo"
                 className="brand-logo"
-                onError={(e) => { e.target.src = 'https://via.placeholder.com/52?text=GS'; }}
+                onError={(e) => { e.target.style.display = 'none'; }}
               />
             </div>
             <div className="brand-titles">
@@ -87,7 +89,7 @@ export default function TopNav({
 
             {/* WhatsApp Direct Chat Button */}
             <a
-              href="https://wa.me/919842932756"
+              href={`https://wa.me/${WHATSAPP_NUMBER}`}
               target="_blank"
               rel="noreferrer"
               className="btn btn-whatsapp-header"
@@ -190,7 +192,7 @@ export default function TopNav({
 
               <div style={{ marginTop: '1.5rem' }}>
                 <a
-                  href="https://wa.me/919842932756"
+                  href={`https://wa.me/${WHATSAPP_NUMBER}`}
                   target="_blank"
                   rel="noreferrer"
                   className="btn-whatsapp-footer"

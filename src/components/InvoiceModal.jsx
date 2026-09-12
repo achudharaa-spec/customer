@@ -339,6 +339,39 @@ export default function InvoiceModal({
               </div>
             </div>
 
+            {/* Bale Allocation Breakdown — shown when packInfo has bale detail */}
+            {Array.isArray(packInfo.bales) && packInfo.bales.length > 0 && (
+              <div className="invoice-bale-breakdown">
+                <div className="bale-breakdown-header">
+                  <i className="fa-solid fa-layer-group"></i>
+                  <span>Master Bale Allocation Breakdown</span>
+                </div>
+                {packInfo.bales.map((bale) => (
+                  <div key={bale.baleId} className="invoice-bale-row">
+                    <div className="invoice-bale-id">
+                      <i className="fa-solid fa-cube"></i> {bale.baleId}
+                    </div>
+                    <div className="invoice-bale-bar-wrap">
+                      <div className="invoice-bale-bar-track">
+                        <div
+                          className="invoice-bale-bar-fill"
+                          style={{ width: `${Math.min(100, parseFloat(bale.capacityPercent))}%` }}
+                        ></div>
+                      </div>
+                      <span className="invoice-bale-pct">{bale.capacityPercent}%</span>
+                    </div>
+                    <div className="invoice-bale-items">
+                      {bale.items.map((it) => (
+                        <span key={it.itemId} className="invoice-bale-chip">
+                          {it.title}: {it.bundleQty}B ({it.capacityPercent}%)
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Automated Note */}
             <div className="invoice-note-box">
               <i className="fa-solid fa-circle-exclamation note-icon"></i>

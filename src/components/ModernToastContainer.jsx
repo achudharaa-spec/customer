@@ -1,19 +1,27 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '../utils/toast';
 
 export default function ModernToastContainer() {
   const [toasts, setToasts] = useState([]);
+  const timersRef = useRef(new Set());
 
   useEffect(() => {
     const unsub = toast.subscribe((newToast) => {
       setToasts((prev) => [...prev, newToast]);
 
-      setTimeout(() => {
+      const timerId = setTimeout(() => {
         setToasts((prev) => prev.filter((t) => t.id !== newToast.id));
+        timersRef.current.delete(timerId);
       }, newToast.duration || 4000);
+
+      timersRef.current.add(timerId);
     });
 
-    return () => unsub();
+    return () => {
+      unsub();
+      timersRef.current.forEach((t) => clearTimeout(t));
+      timersRef.current.clear();
+    };
   }, []);
 
   const removeToast = (id) => {

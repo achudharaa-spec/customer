@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { db, collection, addDoc, serverTimestamp } from '../firebase';
+import { db, collection, addDoc, doc, setDoc, serverTimestamp } from '../firebase';
 import { calculateMasterPacks } from '../utils/packetEngine';
 import { generatePdfInvoice } from '../utils/pdfGenerator';
 import { toast } from '../utils/toast';
 import { sanitizeInput, orderRateLimiter } from '../utils/security';
+import BalePackingModal from './BalePackingModal';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
 
@@ -24,6 +25,7 @@ export default function OrderLayer({
   const [address, setAddress] = useState('');
   const [isDownloadingPdf, setIsDownloadingPdf] = useState(false);
   const [honeypot, setHoneypot] = useState('');
+  const [isBaleModalOpen, setIsBaleModalOpen] = useState(false);
 
   // Field validation states
   const [errors, setErrors] = useState({});
@@ -191,18 +193,36 @@ export default function OrderLayer({
         items: validItems,
         totalUnits: Number(totalUnits),
         estBales: Number(packInfo.estPacks) || 1,
+        bales: packInfo.bales || [],
+        balesPacked: true,
         grandTotal: Number(grandTotal),
         status: 'PENDING',
         createdAt: serverTimestamp()
       };
 
-      await addDoc(collection(db, 'orders'), orderPayload);
+      const docRef = await addDoc(collection(db, 'orders'), orderPayload);
+
+      // Persist dedicated master_bales record for the order
+      if (packInfo.bales && packInfo.bales.length > 0) {
+        try {
+          await setDoc(doc(db, 'master_bales', docRef.id), {
+            orderId: docRef.id,
+            companyName: cleanCompany,
+            totalBales: Number(packInfo.estPacks) || 1,
+            totalBundles: Number(totalUnits),
+            bales: packInfo.bales,
+            createdAt: serverTimestamp()
+          });
+        } catch (baleErr) {
+          console.warn('master_bales sub-doc notice:', baleErr.message);
+        }
+      }
 
       if (typeof window !== 'undefined' && window.BroadcastChannel) {
         const channel = new BroadcastChannel('gsco_realtime_channel');
         channel.postMessage({
           type: 'ORDER_PLACED',
-          order: orderPayload
+          order: { id: docRef.id, ...orderPayload }
         });
         channel.close();
       }
@@ -559,6 +579,22 @@ export default function OrderLayer({
 
             {/* Section 4: Action Buttons */}
             <div className="layer-action-buttons">
+              {/* Bale Allocation Plan button — no form validation required */}
+              <button
+                type="button"
+                className="btn-bale-plan"
+                onClick={() => {
+                  if (selectedProductIds.length === 0) {
+                    toast.warning('Please select at least 1 mat product to view bale plan.', 'Cart Empty');
+                    return;
+                  }
+                  setIsBaleModalOpen(true);
+                }}
+              >
+                <i className="fa-solid fa-boxes-stacked"></i>
+                <span>View Bale Allocation Plan</span>
+              </button>
+
               <button
                 type="button"
                 className="btn-preview-invoice"
@@ -599,6 +635,14 @@ export default function OrderLayer({
           </div>
         </div>
       </aside>
+
+      {/* Bale Packing Modal — rendered outside aside so it overlays correctly */}
+      <BalePackingModal
+        isOpen={isBaleModalOpen}
+        onClose={() => setIsBaleModalOpen(false)}
+        packInfo={packInfo}
+        products={products}
+      />
     </>
   );
 }

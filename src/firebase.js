@@ -1,5 +1,5 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, onSnapshot, addDoc, serverTimestamp, connectFirestoreEmulator } from "firebase/firestore";
+import { getFirestore, collection, onSnapshot, addDoc, doc, setDoc, serverTimestamp, connectFirestoreEmulator } from "firebase/firestore";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
 const firebaseConfig = {
@@ -36,5 +36,5 @@ if (typeof window !== "undefined" && window.location.hostname !== "localhost" &&
   }
 }
 
-export { collection, onSnapshot, addDoc, serverTimestamp };
+export { collection, onSnapshot, addDoc, doc, setDoc, serverTimestamp };
 export default app;

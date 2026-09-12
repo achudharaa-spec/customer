@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ProductCard from './ProductCard';
 
 export default function ProductGrid({
@@ -10,31 +10,35 @@ export default function ProductGrid({
   sortOption = 'default',
   setSortOption
 }) {
-  let filtered = products.filter((p) => {
-    const matchesCategory = activeCategory === 'ALL' || p.category === activeCategory;
-    const matchesSearch =
-      !searchQuery ||
-      (p.title && p.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.category && p.category.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
+  const filtered = useMemo(() => {
+    const searchLower = (searchQuery || '').toLowerCase().trim();
 
-  filtered.sort((a, b) => {
-    const aDisabled = !!a.isDisabled;
-    const bDisabled = !!b.isDisabled;
-    if (aDisabled && !bDisabled) return 1;  // Disabled item moved to last
-    if (!aDisabled && bDisabled) return -1; // Enabled item kept in front
+    const list = products.filter((p) => {
+      const matchesCategory = activeCategory === 'ALL' || p.category === activeCategory;
+      const matchesSearch =
+        !searchLower ||
+        (p.title && p.title.toLowerCase().includes(searchLower)) ||
+        (p.category && p.category.toLowerCase().includes(searchLower)) ||
+        (p.description && p.description.toLowerCase().includes(searchLower));
+      return matchesCategory && matchesSearch;
+    });
 
-    if (sortOption === 'price-low') {
-      return a.baseRate - b.baseRate;
-    } else if (sortOption === 'price-high') {
-      return b.baseRate - a.baseRate;
-    } else if (sortOption === 'stock') {
-      return (b.stockQty || 0) - (a.stockQty || 0);
-    }
-    return 0;
-  });
+    return list.sort((a, b) => {
+      const aDisabled = !!a.isDisabled;
+      const bDisabled = !!b.isDisabled;
+      if (aDisabled && !bDisabled) return 1;  // Disabled item moved to last
+      if (!aDisabled && bDisabled) return -1; // Enabled item kept in front
+
+      if (sortOption === 'price-low') {
+        return a.baseRate - b.baseRate;
+      } else if (sortOption === 'price-high') {
+        return b.baseRate - a.baseRate;
+      } else if (sortOption === 'stock') {
+        return (b.stockQty || 0) - (a.stockQty || 0);
+      }
+      return 0;
+    });
+  }, [products, activeCategory, searchQuery, sortOption]);
 
   return (
     <section className="catalog-products-section">

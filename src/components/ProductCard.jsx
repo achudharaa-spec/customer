@@ -19,6 +19,12 @@ export default function ProductCard({ product, isSelected, onToggleSelect }) {
             {product.bundlePieces} Pcs/{product.unit.replace('per ', '')}
           </span>
         )}
+        {product.bundlesPerPack && (
+          <span className="card-bundle-pill" style={{ background: '#e0f2fe', color: '#0369a1', borderColor: '#bae6fd' }}>
+            <i className="fa-solid fa-cube" style={{ marginRight: '0.2rem' }}></i>
+            1 Bale = {product.bundlesPerPack} {product.unit === 'per Piece' ? 'Pcs' : 'Bundles'}
+          </span>
+        )}
       </div>
 
       {/* Main Split Body: Left Logo/Photo Box, Right Details */}
