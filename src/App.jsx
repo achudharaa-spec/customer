@@ -23,6 +23,20 @@ export default function App() {
   const [isOrderLayerOpen, setIsOrderLayerOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState({});
+  const [masterBaleRate, setMasterBaleRate] = useState(100); // Default ₹100 / Master Bale (Re-editable)
+
+  // Calculate master packs and totals
+  const packInfo = calculateMasterPacks(selectedProductIds, products, itemQuantities);
+
+  let itemsSubtotal = 0;
+  selectedProductIds.forEach((id) => {
+    const prod = products.find((p) => p.id === id);
+    const qty = itemQuantities[id] || 1;
+    if (prod) itemsSubtotal += prod.baseRate * qty;
+  });
+  const estBales = packInfo.estPacks || 0;
+  const masterBaleTotal = estBales * (Number(masterBaleRate) >= 0 ? Number(masterBaleRate) : 100);
+  const grandTotal = itemsSubtotal + masterBaleTotal;
 
   useEffect(() => {
     // 1. Listen to real-time events across tabs from Admin
@@ -95,17 +109,6 @@ export default function App() {
     setItemQuantities({ ...itemQuantities, [productId]: val });
   };
 
-  const handleRemoveItem = (productId) => {
-    handleToggleSelect(productId);
-  };
-
-  let grandTotal = 0;
-  selectedProductIds.forEach((id) => {
-    const prod = products.find((p) => p.id === id);
-    const qty = itemQuantities[id] || 1;
-    if (prod) grandTotal += prod.baseRate * qty;
-  });
-
   return (
     <div className="classic-business-theme">
       <TopNav
@@ -156,6 +159,8 @@ export default function App() {
         itemQuantities={itemQuantities}
         onUpdateQty={handleUpdateQty}
         onRemoveItem={handleRemoveItem}
+        masterBaleRate={masterBaleRate}
+        onUpdateMasterBaleRate={setMasterBaleRate}
         onOpenInvoicePreview={(data) => {
           setInvoiceData(data);
           setIsInvoiceModalOpen(true);
@@ -174,7 +179,9 @@ export default function App() {
         selectedProductIds={selectedProductIds}
         products={products}
         itemQuantities={itemQuantities}
-        packInfo={calculateMasterPacks(selectedProductIds, products, itemQuantities)}
+        packInfo={packInfo}
+        masterBaleRate={masterBaleRate}
+        onUpdateMasterBaleRate={setMasterBaleRate}
       />
 
       {/* Two-Tier Wholesale Footer from Reference Image */}

@@ -29,7 +29,8 @@ export async function generatePdfInvoice({
   selectedProductIds,
   products,
   itemQuantities,
-  packInfo
+  packInfo,
+  masterBaleRate = 100
 }) {
   const compName = company?.trim() || 'Valued Customer';
   const custName = name?.trim() || 'Wholesale Buyer';
@@ -39,13 +40,13 @@ export async function generatePdfInvoice({
   const today = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // Calculate items and totals with parallel image preloading
-  let grandTotal = 0;
+  let itemsSubtotal = 0;
   const itemPromises = selectedProductIds.map(async (id, idx) => {
     const prod = products.find((p) => p.id === id);
     if (!prod) return null;
     const qty = itemQuantities[id] || 1;
     const subtotal = prod.baseRate * qty;
-    grandTotal += subtotal;
+    itemsSubtotal += subtotal;
 
     // Real product image check: do NOT use company logo for product image
     const hasRealImage = Boolean(prod.imageUrl && !prod.imageUrl.includes('logo.jpg'));
@@ -74,6 +75,11 @@ export async function generatePdfInvoice({
       imageSrc: prodImgBase64
     };
   });
+
+  const estBales = packInfo?.estPacks || 0;
+  const currentBaleRate = Number(masterBaleRate) >= 0 ? Number(masterBaleRate) : 100;
+  const masterBaleTotal = estBales * currentBaleRate;
+  const grandTotal = itemsSubtotal + masterBaleTotal;
 
   // Preload logo and product images concurrently
   const [itemsRaw, logoBase64] = await Promise.all([
@@ -207,7 +213,7 @@ export async function generatePdfInvoice({
               <div style="display: grid; grid-template-columns: 130px 8px 1fr;">
                 <span style="font-weight: 600; color: #334155;"><i class="fa-solid fa-boxes-packing" style="color: #031b4e;"></i> Master Shipping</span>
                 <span>:</span>
-                <span>${packInfo.estPacks} Bales</span>
+                <span>${estBales} Bales (@ Rs. ${currentBaleRate}/Bale)</span>
               </div>
               <div style="display: grid; grid-template-columns: 130px 8px 1fr;">
                 <span style="font-weight: 600; color: #334155;"><i class="fa-solid fa-truck" style="color: #031b4e;"></i> Dispatch Type</span>
@@ -275,14 +281,25 @@ export async function generatePdfInvoice({
               <i class="fa-solid fa-boxes-stacked"></i>
             </div>
             <div>
-              <span style="font-size: 0.73rem; color: #64748b; display: block;">Est. Master Bales</span>
-              <strong style="font-size: 1.15rem; color: #031b4e;">${packInfo.estPacks} Bales</strong>
+              <span style="font-size: 0.73rem; color: #64748b; display: block;">Est. Master Bales Packaging</span>
+              <strong style="font-size: 1.1rem; color: #031b4e;">${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'}</strong>
+              <span style="font-size: 0.72rem; color: #334155; display: block; margin-top: 2px;">@ Rs. ${currentBaleRate} / Bale = <strong>Rs. ${masterBaleTotal.toLocaleString('en-IN')}</strong></span>
             </div>
           </div>
 
-          <div style="background: #031b4e; color: #ffffff; flex: 1.2; padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end;">
-            <span style="font-size: 0.72rem; font-weight: 700; letter-spacing: 1px; color: rgba(255, 255, 255, 0.8);">GRAND TOTAL ────</span>
-            <span style="font-size: 1.5rem; font-weight: 900; color: #ffffff; line-height: 1.1;">Rs. ${grandTotal.toLocaleString('en-IN')}</span>
+          <div style="background: #031b4e; color: #ffffff; flex: 1.3; padding: 10px 16px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; gap: 3px;">
+            <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.72rem; color: rgba(255,255,255,0.85);">
+              <span>Products Subtotal:</span>
+              <strong style="color: #ffffff;">Rs. ${itemsSubtotal.toLocaleString('en-IN')}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; width: 100%; font-size: 0.72rem; color: rgba(255,255,255,0.85); padding-bottom: 4px; border-bottom: 1px dashed rgba(255,255,255,0.3);">
+              <span>Bale Packaging (${estBales} × ₹${currentBaleRate}):</span>
+              <strong style="color: #ffffff;">Rs. ${masterBaleTotal.toLocaleString('en-IN')}</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-top: 2px;">
+              <span style="font-size: 0.74rem; font-weight: 700; letter-spacing: 0.8px; color: #d97706;">GRAND TOTAL</span>
+              <span style="font-size: 1.35rem; font-weight: 900; color: #ffffff; line-height: 1.1;">Rs. ${grandTotal.toLocaleString('en-IN')}</span>
+            </div>
           </div>
         </div>
 

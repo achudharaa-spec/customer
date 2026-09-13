@@ -16,7 +16,9 @@ export default function OrderLayer({
   itemQuantities,
   onUpdateQty,
   onRemoveItem,
-  onOpenInvoicePreview
+  onOpenInvoicePreview,
+  masterBaleRate = 100,
+  onUpdateMasterBaleRate
 }) {
   const [company, setCompany] = useState('');
   const [name, setName] = useState('');
@@ -122,17 +124,22 @@ export default function OrderLayer({
   // Calculate packet bundling info
   const packInfo = calculateMasterPacks(selectedProductIds, products, itemQuantities);
 
-  // Calculate grand totals
+  // Calculate grand totals with re-editable master bale pricing
   let totalUnits = 0;
-  let grandTotal = 0;
+  let itemsSubtotal = 0;
   selectedProductIds.forEach((id) => {
     const prod = products.find((p) => p.id === id);
     const qty = itemQuantities[id] || 1;
     if (prod) {
       totalUnits += qty;
-      grandTotal += prod.baseRate * qty;
+      itemsSubtotal += prod.baseRate * qty;
     }
   });
+
+  const estBales = packInfo.estPacks || 0;
+  const currentBaleRate = Number(masterBaleRate) >= 0 ? Number(masterBaleRate) : 100;
+  const masterBaleTotal = estBales * currentBaleRate;
+  const grandTotal = itemsSubtotal + masterBaleTotal;
 
   const handleWhatsAppSubmit = async () => {
     // Bot Honeypot Defense
@@ -192,7 +199,10 @@ export default function OrderLayer({
         deliveryAddress: cleanAddress,
         items: validItems,
         totalUnits: Number(totalUnits),
-        estBales: Number(packInfo.estPacks) || 1,
+        itemsSubtotal: Number(itemsSubtotal),
+        estBales: Number(estBales) || 1,
+        masterBaleRate: Number(currentBaleRate),
+        masterBaleTotal: Number(masterBaleTotal),
         bales: packInfo.bales || [],
         balesPacked: true,
         grandTotal: Number(grandTotal),
@@ -208,7 +218,7 @@ export default function OrderLayer({
           await setDoc(doc(db, 'master_bales', docRef.id), {
             orderId: docRef.id,
             companyName: cleanCompany,
-            totalBales: Number(packInfo.estPacks) || 1,
+            totalBales: Number(estBales) || 1,
             totalBundles: Number(totalUnits),
             bales: packInfo.bales,
             createdAt: serverTimestamp()
@@ -252,8 +262,9 @@ export default function OrderLayer({
 
     message += `====================================\n`;
     message += `📦 *Total Mat Quantity*: ${totalUnits} Bundle(s)\n`;
-    message += `📦 *Est. Master Bales / Packs*: *${packInfo.estPacks} Master ${packInfo.estPacks === 1 ? 'Bale' : 'Bales'}*\n`;
-    message += `💰 *TOTAL ESTIMATED RATE*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
+    message += `🏷️ *Products Subtotal*: Rs. ${itemsSubtotal.toLocaleString('en-IN')}\n`;
+    message += `📦 *Est. Master Bales*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'} @ Rs. ${currentBaleRate}/Bale = Rs. ${masterBaleTotal.toLocaleString('en-IN')}\n`;
+    message += `💰 *TOTAL ESTIMATED GRAND RATE*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
     message += `🏷️ *Wholesale Notice*: Price may differ based on the season item or the stock quantity at dispatch.\n`;
     message += `====================================\n`;
     message += `Please confirm availability & dispatch transport details. Thank you!`;
@@ -284,7 +295,8 @@ export default function OrderLayer({
         selectedProductIds,
         products,
         itemQuantities,
-        packInfo
+        packInfo,
+        masterBaleRate: currentBaleRate
       });
       toast.success('A4 PDF Invoice downloaded successfully!', 'Invoice Saved');
     } catch (err) {
@@ -557,14 +569,94 @@ export default function OrderLayer({
               </div>
               <div className="calc-row">
                 <span>Total Ordered Quantity:</span>
-                <strong>{totalUnits} Units</strong>
+                <strong>{totalUnits} Bundle(s)</strong>
               </div>
-              <div className="calc-row packet-calc-row">
-                <span><i className="fa-solid fa-boxes-packing"></i> Est. Master Bales:</span>
-                <strong>{packInfo.estPacks} Master {packInfo.estPacks === 1 ? 'Bale' : 'Bales'}</strong>
+              <div className="calc-row">
+                <span>Products Subtotal:</span>
+                <strong style={{ color: '#031b4e' }}>₹{itemsSubtotal.toLocaleString('en-IN')}</strong>
               </div>
+
+              {/* Master Bale Cost & Re-editable Rate Section */}
+              <div className="bale-rate-control-box">
+                <div className="bale-rate-header-row">
+                  <span className="bale-rate-label">
+                    <i className="fa-solid fa-boxes-packing"></i> Est. Master Bales:
+                  </span>
+                  <strong className="bale-count-badge">
+                    {estBales} Master {estBales === 1 ? 'Bale' : 'Bales'}
+                  </strong>
+                </div>
+
+                <div className="bale-rate-input-row">
+                  <div className="bale-rate-field-label">
+                    <i className="fa-solid fa-tag"></i> Rate / Master Bale (Re-editable):
+                  </div>
+                  <div className="bale-rate-stepper">
+                    <button
+                      type="button"
+                      className="bale-rate-btn"
+                      onClick={() => {
+                        const newRate = Math.max(0, (Number(masterBaleRate) || 0) - 10);
+                        if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(newRate);
+                      }}
+                      title="Decrease rate by ₹10"
+                    >
+                      <i className="fa-solid fa-minus"></i>
+                    </button>
+                    <div className="bale-rate-input-wrap">
+                      <span className="bale-currency-symbol">₹</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        className="bale-rate-input"
+                        value={masterBaleRate}
+                        onChange={(e) => {
+                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
+                          if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(val);
+                        }}
+                        onBlur={() => {
+                          if (masterBaleRate === '' || isNaN(masterBaleRate)) {
+                            if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(100);
+                          }
+                        }}
+                        placeholder="100"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="bale-rate-btn"
+                      onClick={() => {
+                        const newRate = (Number(masterBaleRate) || 0) + 10;
+                        if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(newRate);
+                      }}
+                      title="Increase rate by ₹10"
+                    >
+                      <i className="fa-solid fa-plus"></i>
+                    </button>
+                    {Number(masterBaleRate) !== 100 && (
+                      <button
+                        type="button"
+                        className="bale-rate-reset-btn"
+                        onClick={() => {
+                          if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(100);
+                        }}
+                        title="Reset to default ₹100 / Bale"
+                      >
+                        Reset (₹100)
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="calc-row bale-cost-summary-row">
+                  <span>Bale Packaging Charges ({estBales} × ₹{currentBaleRate}):</span>
+                  <strong className="bale-cost-val">₹{masterBaleTotal.toLocaleString('en-IN')}</strong>
+                </div>
+              </div>
+
               <div className="calc-row calc-row-total">
-                <span>Total Estimated Rate:</span>
+                <span>Grand Total (Products + Bales):</span>
                 <strong className="calc-grand-total">₹{grandTotal.toLocaleString('en-IN')}</strong>
               </div>
             </div>

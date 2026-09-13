@@ -15,7 +15,9 @@ export default function InvoiceModal({
   selectedProductIds,
   products,
   itemQuantities,
-  packInfo
+  packInfo,
+  masterBaleRate = 100,
+  onUpdateMasterBaleRate
 }) {
   const invoiceRef = useRef(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -30,7 +32,7 @@ export default function InvoiceModal({
 
   // Calculate totals
   let totalUnits = 0;
-  let grandTotal = 0;
+  let itemsSubtotal = 0;
   const items = [];
 
   selectedProductIds.forEach((id, idx) => {
@@ -39,7 +41,7 @@ export default function InvoiceModal({
     const qty = itemQuantities[id] || 1;
     const subtotal = prod.baseRate * qty;
     totalUnits += qty;
-    grandTotal += subtotal;
+    itemsSubtotal += subtotal;
 
     items.push({
       sno: idx + 1,
@@ -53,6 +55,11 @@ export default function InvoiceModal({
       imageUrl: prod.imageUrl || '/assets/logo.jpg'
     });
   });
+
+  const estBales = packInfo?.estPacks || 0;
+  const currentBaleRate = Number(masterBaleRate) >= 0 ? Number(masterBaleRate) : 100;
+  const masterBaleTotal = estBales * currentBaleRate;
+  const grandTotal = itemsSubtotal + masterBaleTotal;
 
   const handleDownloadPdf = async () => {
     if (isDownloading) return;
@@ -69,6 +76,7 @@ export default function InvoiceModal({
         products,
         itemQuantities,
         packInfo,
+        masterBaleRate: currentBaleRate,
         invoiceElement: invoiceRef.current
       });
       toast.success('A4 PDF Invoice downloaded successfully!', 'Invoice Saved');
@@ -90,7 +98,8 @@ export default function InvoiceModal({
       msg += `${it.sno}. *${it.title}* - ${it.qty} ${it.unit} @ Rs. ${it.rate.toLocaleString('en-IN')} = Rs. ${it.subtotal.toLocaleString('en-IN')}\n`;
     });
     msg += `------------------------------------\n`;
-    msg += `📦 *Est. Master Bales*: ${packInfo.estPacks} Bales\n`;
+    msg += `🏷️ *Products Subtotal*: Rs. ${itemsSubtotal.toLocaleString('en-IN')}\n`;
+    msg += `📦 *Est. Master Bales*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'} @ Rs. ${currentBaleRate}/Bale = Rs. ${masterBaleTotal.toLocaleString('en-IN')}\n`;
     msg += `💰 *GRAND TOTAL*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
     msg += `------------------------------------\n`;
     msg += `Please confirm order availability & dispatch details.`;
@@ -328,14 +337,27 @@ export default function InvoiceModal({
                   <i className="fa-solid fa-boxes-stacked"></i>
                 </div>
                 <div>
-                  <span className="bales-subtext">Est. Master Bales</span>
-                  <strong className="bales-count">{packInfo.estPacks} Bales</strong>
+                  <span className="bales-subtext">Est. Master Bales Packaging</span>
+                  <strong className="bales-count">{estBales} Master {estBales === 1 ? 'Bale' : 'Bales'}</strong>
+                  <div className="invoice-bale-rate-pill">
+                    <span>@ ₹{currentBaleRate}/Bale = <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong></span>
+                  </div>
                 </div>
               </div>
 
               <div className="grand-total-col">
-                <span className="grand-total-label">GRAND TOTAL ────</span>
-                <span className="grand-total-amount">Rs. {grandTotal.toLocaleString('en-IN')}</span>
+                <div className="invoice-subtotal-line">
+                  <span>Products Subtotal:</span>
+                  <strong>Rs. {itemsSubtotal.toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="invoice-bale-line">
+                  <span>Master Bale Packaging ({estBales} × ₹{currentBaleRate}):</span>
+                  <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
+                </div>
+                <div className="invoice-grand-line">
+                  <span className="grand-total-label">GRAND TOTAL ────</span>
+                  <span className="grand-total-amount">Rs. {grandTotal.toLocaleString('en-IN')}</span>
+                </div>
               </div>
             </div>
 

@@ -1352,8 +1352,155 @@ body.classic-business-theme {
   font-weight: 600;
 }
 
+/* Master Bale Rate & Cost Box */
+.bale-rate-control-box {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.65rem 0.85rem;
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.bale-rate-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+}
+
+.bale-rate-label {
+  font-weight: 700;
+  color: var(--brand-navy);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bale-count-badge {
+  background: #eff6ff;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.bale-rate-input-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  padding: 0.35rem 0;
+  border-top: 1px dashed #e2e8f0;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.bale-rate-field-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.bale-rate-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.bale-rate-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: var(--brand-navy);
+  font-weight: 800;
+  font-size: 0.75rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.bale-rate-btn:hover {
+  background: var(--brand-navy);
+  color: #ffffff;
+  border-color: var(--brand-navy);
+}
+
+.bale-rate-input-wrap {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid var(--brand-navy);
+  border-radius: 6px;
+  padding: 0 0.35rem;
+  height: 28px;
+}
+
+.bale-currency-symbol {
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: var(--brand-navy);
+  margin-right: 0.15rem;
+}
+
+.bale-rate-input {
+  width: 55px;
+  border: none;
+  outline: none;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--brand-navy);
+  text-align: center;
+  padding: 0;
+}
+
+.bale-rate-input::-webkit-inner-spin-button,
+.bale-rate-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bale-rate-reset-btn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 0.15rem 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.bale-rate-reset-btn:hover {
+  background: #e2e8f0;
+  color: var(--brand-navy);
+}
+
+.bale-cost-summary-row {
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.bale-cost-val {
+  color: #031b4e;
+  font-weight: 800;
+  font-size: 0.9rem;
+}
+
 .calc-row-total {
-  border-top: 1px solid #e2e8f0;
+  border-top: 1.5px solid #cbd5e1;
   padding-top: 0.55rem;
   margin-top: 0.4rem;
   font-weight: 800;
@@ -1362,9 +1509,10 @@ body.classic-business-theme {
 }
 
 .calc-grand-total {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   color: var(--brand-navy);
   font-family: 'Outfit', sans-serif;
+  font-weight: 900;
 }
 
 .order-pricing-disclaimer {
@@ -2289,19 +2437,53 @@ body.classic-business-theme {
 .grand-total-col {
   background: var(--brand-navy);
   color: #ffffff;
-  flex: 1.2;
+  flex: 1.3;
   padding: 0.85rem 1.25rem;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: flex-end;
+  gap: 0.25rem;
+}
+
+.invoice-bale-rate-pill {
+  font-size: 0.72rem;
+  color: #475569;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  display: inline-block;
+  margin-top: 0.25rem;
+}
+
+.invoice-subtotal-line,
+.invoice-bale-line {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.invoice-bale-line {
+  padding-bottom: 0.35rem;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.3);
+}
+
+.invoice-grand-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  width: 100%;
+  margin-top: 0.15rem;
 }
 
 .grand-total-label {
   font-size: 0.75rem;
   font-weight: 700;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.8);
+  letter-spacing: 0.8px;
+  color: var(--brand-gold);
 }
 
 .grand-total-amount {
