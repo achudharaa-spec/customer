@@ -1,10 +1,12 @@
 import React, { useMemo } from 'react';
 import ProductCard from './ProductCard';
+import LottieAnimation from './LottieAnimation';
 
 export default function ProductGrid({
   products,
   selectedProductIds,
   onToggleSelect,
+  onOpenDetail,
   activeCategory,
   searchQuery,
   sortOption = 'default',
@@ -80,9 +82,9 @@ export default function ProductGrid({
       <div className="product-cards-grid">
         {filtered.length === 0 ? (
           <div className="no-products-box">
-            <i className="fa-solid fa-layer-group"></i>
+            <LottieAnimation animationPath="/assets/Error 404.json" width={220} height={200} />
             <h3>No Mat Products Found</h3>
-            <p>Try searching for a different keyword or category tab.</p>
+            <p>No catalog items match your search or filter criteria. Try searching for a different keyword or category tab.</p>
           </div>
         ) : (
           filtered.map((product) => (
@@ -91,6 +93,7 @@ export default function ProductGrid({
               product={product}
               isSelected={selectedProductIds.includes(product.id)}
               onToggleSelect={onToggleSelect}
+              onOpenDetail={onOpenDetail}
             />
           ))
         )}

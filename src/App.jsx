@@ -5,6 +5,8 @@ import TrustBar from './components/TrustBar';
 import HeroBanner from './components/HeroBanner';
 import CategoryTabs from './components/CategoryTabs';
 import ProductGrid from './components/ProductGrid';
+import ProductDetailModal from './components/ProductDetailModal';
+import LottieAnimation from './components/LottieAnimation';
 import FloatingBar from './components/FloatingBar';
 import OrderLayer from './components/OrderLayer';
 import InvoiceModal from './components/InvoiceModal';
@@ -14,12 +16,14 @@ import './styles.css';
 
 export default function App() {
   const [products, setProducts] = useState([]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [itemQuantities, setItemQuantities] = useState({});
   const [activeCategory, setActiveCategory] = useState('ALL');
   const [dynamicCategories, setDynamicCategories] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState('default');
+  const [activeProductDetail, setActiveProductDetail] = useState(null);
   const [isOrderLayerOpen, setIsOrderLayerOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState({});
@@ -68,12 +72,14 @@ export default function App() {
         ...docSnap.data()
       }));
       setProducts(fetched);
+      setIsLoadingCatalog(false);
       localStorage.setItem('gsco_catalog_products', JSON.stringify(fetched));
     }, (error) => {
       console.warn('Firestore customer sync info:', error.message);
+      setIsLoadingCatalog(false);
     });
 
-    // 4. Live sync custom categories from Firestore
+    // 3. Live sync custom categories from Firestore
     const categoriesRef = collection(db, 'categories');
     const unsubscribeCategories = onSnapshot(categoriesRef, (snapshot) => {
       const cats = snapshot.docs.map((d) => d.data().name).filter(Boolean);
@@ -105,6 +111,13 @@ export default function App() {
     }
   };
 
+  const handleRemoveItem = (productId) => {
+    setSelectedProductIds(selectedProductIds.filter((id) => id !== productId));
+    const updated = { ...itemQuantities };
+    delete updated[productId];
+    setItemQuantities(updated);
+  };
+
   const handleUpdateQty = (productId, val) => {
     setItemQuantities({ ...itemQuantities, [productId]: val });
   };
@@ -134,21 +147,40 @@ export default function App() {
           setSortOption={setSortOption}
         />
 
-        <ProductGrid
-          products={products}
-          selectedProductIds={selectedProductIds}
-          onToggleSelect={handleToggleSelect}
-          activeCategory={activeCategory}
-          searchQuery={searchQuery}
-          sortOption={sortOption}
-          setSortOption={setSortOption}
-        />
+        {isLoadingCatalog ? (
+          <div className="catalog-loading-box">
+            <LottieAnimation animationPath="/assets/loading.json" width={130} height={130} />
+            <p className="catalog-loading-text">Loading fresh wholesale catalog...</p>
+          </div>
+        ) : (
+          <ProductGrid
+            products={products}
+            selectedProductIds={selectedProductIds}
+            onToggleSelect={handleToggleSelect}
+            onOpenDetail={(product) => setActiveProductDetail(product)}
+            activeCategory={activeCategory}
+            searchQuery={searchQuery}
+            sortOption={sortOption}
+            setSortOption={setSortOption}
+          />
+        )}
       </main>
 
       <FloatingBar
         selectedCount={selectedProductIds.length}
         grandTotal={grandTotal}
         onOpenOrderLayer={() => setIsOrderLayerOpen(true)}
+      />
+
+      {/* Product Detail / Zoom Modal (Half Page Split on Desktop, Bottom Sheet on Mobile with X Close Mark) */}
+      <ProductDetailModal
+        product={activeProductDetail}
+        isOpen={Boolean(activeProductDetail)}
+        onClose={() => setActiveProductDetail(null)}
+        isSelected={activeProductDetail ? selectedProductIds.includes(activeProductDetail.id) : false}
+        onToggleSelect={handleToggleSelect}
+        qty={activeProductDetail ? (itemQuantities[activeProductDetail.id] || 1) : 1}
+        onUpdateQty={handleUpdateQty}
       />
 
       <OrderLayer

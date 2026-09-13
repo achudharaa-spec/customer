@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function ProductCard({ product, isSelected, onToggleSelect }) {
+export default function ProductCard({ product, isSelected, onToggleSelect, onOpenDetail }) {
   const isBulkUnit = (product.unit === 'per Bundle' || product.unit === 'per Dozen') && product.bundlePieces > 0;
   const perPieceRate = isBulkUnit ? Math.round(product.baseRate / product.bundlePieces) : 0;
   const seasonNotice = product.seasonNotice || 'Price may differ based on the season item or the stock quantity';
@@ -29,17 +29,34 @@ export default function ProductCard({ product, isSelected, onToggleSelect }) {
 
       {/* Main Split Body: Left Logo/Photo Box, Right Details */}
       <div className="card-main-split">
-        <div className="card-image-box">
+        <div
+          className="card-image-box"
+          onClick={() => onOpenDetail && onOpenDetail(product)}
+          title="Click to view large image & specifications"
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onOpenDetail && onOpenDetail(product); }}
+        >
           <img
             src={product.imageUrl || '/assets/logo.jpg'}
             alt={product.title}
             className="card-product-img"
             onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
           />
+          <div className="card-image-zoom-overlay">
+            <i className="fa-solid fa-magnifying-glass-plus"></i>
+            <span>Zoom</span>
+          </div>
         </div>
 
         <div className="card-info-col">
-          <h3 className="card-title">{product.title}</h3>
+          <h3
+            className="card-title card-title-clickable"
+            onClick={() => onOpenDetail && onOpenDetail(product)}
+            title="Click to view details"
+          >
+            {product.title}
+          </h3>
           <p className="card-desc">{product.description || 'High quality woven durable mat.'}</p>
 
           <div className="card-tags-list">
