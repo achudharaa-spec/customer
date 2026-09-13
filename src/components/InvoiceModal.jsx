@@ -351,7 +351,7 @@ export default function InvoiceModal({
                   <strong>Rs. {itemsSubtotal.toLocaleString('en-IN')}</strong>
                 </div>
                 <div className="invoice-bale-line">
-                  <span>Master Bale Packaging ({estBales} × ₹{currentBaleRate}):</span>
+                  <span>📦 Bale Charges: {estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/bale =</span>
                   <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
                 </div>
                 <div className="invoice-grand-line">

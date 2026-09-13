@@ -650,8 +650,8 @@ export default function OrderLayer({
                 </div>
 
                 <div className="calc-row bale-cost-summary-row">
-                  <span>Bale Packaging Charges ({estBales} × ₹{currentBaleRate}):</span>
-                  <strong className="bale-cost-val">₹{masterBaleTotal.toLocaleString('en-IN')}</strong>
+                  <span>📦 Bale Charges: {estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/bale = </span>
+                  <strong className="bale-cost-val">Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
                 </div>
               </div>
 
