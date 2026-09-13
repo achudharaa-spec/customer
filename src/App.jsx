@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { db, collection, onSnapshot } from './firebase';
+import { db, collection, doc, onSnapshot } from './firebase';
 import TopNav from './components/TopNav';
 import TrustBar from './components/TrustBar';
 import HeroBanner from './components/HeroBanner';
@@ -60,6 +60,10 @@ export default function App() {
           );
         } else if (event.data?.type === 'PRODUCT_DELETED') {
           setProducts((prev) => prev.filter((p) => p.id !== event.data.productId));
+        } else if (event.data?.type === 'MASTER_BALE_RATE_UPDATED') {
+          if (event.data.rate !== undefined) {
+            setMasterBaleRate(Number(event.data.rate));
+          }
         }
       };
     }
@@ -90,9 +94,23 @@ export default function App() {
       console.warn('Firestore categories sync info:', error.message);
     });
 
+    // 4. Live sync global master bale rate from Firestore
+    const configRef = doc(db, 'settings', 'master_bale_config');
+    const unsubscribeConfig = onSnapshot(configRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.rate !== undefined && data.rate !== null) {
+          setMasterBaleRate(Number(data.rate));
+        }
+      }
+    }, (error) => {
+      console.warn('Firestore master bale config sync info:', error.message);
+    });
+
     return () => {
       unsubscribeProducts();
       unsubscribeCategories();
+      unsubscribeConfig();
       if (channel) channel.close();
     };
   }, []);
