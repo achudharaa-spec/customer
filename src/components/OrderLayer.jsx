@@ -576,7 +576,7 @@ export default function OrderLayer({
                 <strong style={{ color: '#031b4e' }}>₹{itemsSubtotal.toLocaleString('en-IN')}</strong>
               </div>
 
-              {/* Master Bale Cost & Re-editable Rate Section */}
+              {/* Master Bale Cost & Read-Only Factory Packing Section */}
               <div className="bale-rate-control-box">
                 <div className="bale-rate-header-row">
                   <span className="bale-rate-label">
@@ -587,70 +587,8 @@ export default function OrderLayer({
                   </strong>
                 </div>
 
-                <div className="bale-rate-input-row">
-                  <div className="bale-rate-field-label">
-                    <i className="fa-solid fa-tag"></i> Rate / Master Bale (Re-editable):
-                  </div>
-                  <div className="bale-rate-stepper">
-                    <button
-                      type="button"
-                      className="bale-rate-btn"
-                      onClick={() => {
-                        const newRate = Math.max(0, (Number(masterBaleRate) || 0) - 10);
-                        if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(newRate);
-                      }}
-                      title="Decrease rate by ₹10"
-                    >
-                      <i className="fa-solid fa-minus"></i>
-                    </button>
-                    <div className="bale-rate-input-wrap">
-                      <span className="bale-currency-symbol">₹</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="5"
-                        className="bale-rate-input"
-                        value={masterBaleRate}
-                        onChange={(e) => {
-                          const val = e.target.value === '' ? '' : Math.max(0, Number(e.target.value));
-                          if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(val);
-                        }}
-                        onBlur={() => {
-                          if (masterBaleRate === '' || isNaN(masterBaleRate)) {
-                            if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(100);
-                          }
-                        }}
-                        placeholder="100"
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="bale-rate-btn"
-                      onClick={() => {
-                        const newRate = (Number(masterBaleRate) || 0) + 10;
-                        if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(newRate);
-                      }}
-                      title="Increase rate by ₹10"
-                    >
-                      <i className="fa-solid fa-plus"></i>
-                    </button>
-                    {Number(masterBaleRate) !== 100 && (
-                      <button
-                        type="button"
-                        className="bale-rate-reset-btn"
-                        onClick={() => {
-                          if (onUpdateMasterBaleRate) onUpdateMasterBaleRate(100);
-                        }}
-                        title="Reset to default ₹100 / Bale"
-                      >
-                        Reset (₹100)
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="calc-row bale-cost-summary-row">
-                  <span>📦 Bale Charges: {estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/bale = </span>
+                <div className="calc-row bale-cost-summary-row" style={{ marginTop: '0.6rem' }}>
+                  <span>📦 Factory Packing Charge ({estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/Bale):</span>
                   <strong className="bale-cost-val">Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
                 </div>
               </div>
