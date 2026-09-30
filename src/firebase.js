@@ -12,6 +12,23 @@ const firebaseConfig = {
   measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
+function validateUserFirebaseConfig(cfg) {
+  const missing = [];
+  if (!cfg.apiKey || cfg.apiKey.includes('your_')) missing.push('VITE_FIREBASE_API_KEY');
+  if (!cfg.projectId || cfg.projectId.includes('your_')) missing.push('VITE_FIREBASE_PROJECT_ID');
+  if (!cfg.authDomain || cfg.authDomain.includes('your_')) missing.push('VITE_FIREBASE_AUTH_DOMAIN');
+  if (!cfg.appId || cfg.appId.includes('your_')) missing.push('VITE_FIREBASE_APP_ID');
+
+  if (missing.length > 0) {
+    console.warn(
+      `🚨 [Customer Portal] Missing or unconfigured credentials in surya-tex-user/.env:\n` +
+      missing.map((v) => `   - ${v}`).join('\n') +
+      `\nPlease paste your Firebase Web App keys into surya-tex-user/.env.`
+    );
+  }
+}
+validateUserFirebaseConfig(firebaseConfig);
+
 const app = initializeApp(firebaseConfig);
 export const db = getFirestore(app);
 

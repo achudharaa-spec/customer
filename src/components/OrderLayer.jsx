@@ -6,7 +6,8 @@ import { toast } from '../utils/toast';
 import { sanitizeInput, orderRateLimiter } from '../utils/security';
 import BalePackingModal from './BalePackingModal';
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842686264';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:10000';
 
 export default function OrderLayer({
   isOpen,
@@ -18,7 +19,8 @@ export default function OrderLayer({
   onRemoveItem,
   onOpenInvoicePreview,
   masterBaleRate = 100,
-  onUpdateMasterBaleRate
+  onUpdateMasterBaleRate,
+  hidePrices = true
 }) {
   const [company, setCompany] = useState('');
   const [name, setName] = useState('');
@@ -156,7 +158,7 @@ export default function OrderLayer({
     }
 
     if (selectedProductIds.length === 0) {
-      toast.warning('Please select at least 1 mat item before sending order.', 'Order Form Empty');
+      toast.warning('Please select at least 1 mat item before sending order.', 'Order Indent Empty');
       return;
     }
 
@@ -178,6 +180,7 @@ export default function OrderLayer({
         return {
           title: prod.title || 'Mat Product',
           category: prod.category || 'General',
+          unit: prod.unit ? prod.unit.replace('per ', '') : 'Bundle',
           qty: Number(itemQuantities[id]) || 1,
           unitRate: Number(prod.baseRate) || 0
         };
@@ -206,6 +209,7 @@ export default function OrderLayer({
         bales: packInfo.bales || [],
         balesPacked: true,
         grandTotal: Number(grandTotal),
+        pricesHidden: Boolean(hidePrices),
         status: 'PENDING',
         createdAt: serverTimestamp()
       };
@@ -228,6 +232,13 @@ export default function OrderLayer({
         }
       }
 
+      // Broadcast order across tabs and via Central Server SSE
+      fetch(`${SERVER_URL}/api/orders`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: docRef.id, ...orderPayload })
+      }).catch((e) => console.info('Server order sync notice:', e.message));
+
       if (typeof window !== 'undefined' && window.BroadcastChannel) {
         const channel = new BroadcastChannel('gsco_realtime_channel');
         channel.postMessage({
@@ -237,14 +248,14 @@ export default function OrderLayer({
         channel.close();
       }
 
-      toast.success('Your wholesale order inquiry was logged! Opening WhatsApp...', 'Order Registered');
+      toast.success('Your wholesale indent was logged! Opening WhatsApp...', 'Indent Registered');
     } catch (err) {
-      console.warn('Firestore direct write bypassed or offline. Proceeding to WhatsApp:', err.message);
+      console.warn('Firestore write notice. Proceeding to WhatsApp:', err.message);
     }
 
     // Build WhatsApp Message
-    let message = `*NEW WHOLESALE ORDER INQUIRY*\n`;
-    message += `*GOVINDASAMY & CO - WHOLESALE MAT CATALOG*\n`;
+    let message = `*NEW WHOLESALE ORDER INDENT*\n`;
+    message += `*SRI SURYA TEX - WHOLESALE CATALOG*\n`;
     message += `====================================\n`;
     message += `🏢 *Company / Shop*: ${cleanCompany}\n`;
     message += `👤 *Contact Person*: ${cleanName}\n`;
@@ -252,29 +263,36 @@ export default function OrderLayer({
     if (cleanGst) message += `🏛️ *GST Number*: ${cleanGst}\n`;
     message += `📍 *Delivery Address & City*: ${cleanAddress}\n`;
     message += `====================================\n`;
-    message += `*ORDERED MAT ITEMS*:\n`;
+    message += `*REQUESTED MAT ITEMS (INDENT)*:\n`;
 
     validItems.forEach((item, index) => {
-      const subtotal = item.qty * item.unitRate;
-      message += `${index + 1}. *${item.title}*\n`;
-      message += `   Quantity: ${item.qty} Bundle(s) | Rate: Rs. ${item.unitRate.toLocaleString('en-IN')} | Total: Rs. ${subtotal.toLocaleString('en-IN')}\n`;
+      if (!hidePrices) {
+        const subtotal = item.qty * item.unitRate;
+        message += `${index + 1}. *${item.title}*\n`;
+        message += `   Quantity: ${item.qty} ${item.unit || 'Bundle'}(s) | Rate: Rs. ${item.unitRate.toLocaleString('en-IN')} | Total: Rs. ${subtotal.toLocaleString('en-IN')}\n`;
+      } else {
+        message += `${index + 1}. *${item.title}*\n`;
+        message += `   Quantity: ${item.qty} ${item.unit || 'Bundle'}(s)\n`;
+      }
     });
 
     message += `====================================\n`;
     message += `📦 *Total Mat Quantity*: ${totalUnits} Bundle(s)\n`;
-    message += `🏷️ *Products Subtotal*: Rs. ${itemsSubtotal.toLocaleString('en-IN')}\n`;
-    message += `📦 *Est. Master Bales*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'} @ Rs. ${currentBaleRate}/Bale = Rs. ${masterBaleTotal.toLocaleString('en-IN')}\n`;
-    message += `💰 *TOTAL ESTIMATED GRAND RATE*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
-    message += `🏷️ *Wholesale Notice*: Price may differ based on the season item or the stock quantity at dispatch.\n`;
-    message += `====================================\n`;
-    message += `Please confirm availability & dispatch transport details. Thank you!`;
+    message += `📦 *Est. Master Bales*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'}\n`;
+    if (!hidePrices) {
+      message += `🏷️ *Products Subtotal*: Rs. ${itemsSubtotal.toLocaleString('en-IN')}\n`;
+      message += `📦 *Est. Master Bales Cost*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'} @ Rs. ${currentBaleRate}/Bale = Rs. ${masterBaleTotal.toLocaleString('en-IN')}\n`;
+      message += `💰 *TOTAL ESTIMATED GRAND RATE*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
+    }
+    message += `📍 *Dispatch Factory*: SRI SURYA TEX, 185, Eswaran Kovil Kidangu Street, ERODE - 638 001\n`;
+    message += `Please confirm stock availability & transport dispatch terms. Thank you!`;
 
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
   };
 
   const handleDownloadPdf = async () => {
     if (selectedProductIds.length === 0) {
-      toast.warning('Please select at least 1 mat item before downloading PDF invoice.', 'Cart Empty');
+      toast.warning('Please select at least 1 mat item before downloading PDF.', 'Indent Empty');
       return;
     }
 
@@ -285,7 +303,7 @@ export default function OrderLayer({
     if (isDownloadingPdf) return;
     try {
       setIsDownloadingPdf(true);
-      toast.info('Generating high-resolution A4 Invoice PDF with images...', 'Please wait');
+      toast.info('Generating high-resolution A4 Order Slip PDF...', 'Please wait');
       await generatePdfInvoice({
         company,
         name,
@@ -296,9 +314,10 @@ export default function OrderLayer({
         products,
         itemQuantities,
         packInfo,
-        masterBaleRate: currentBaleRate
+        masterBaleRate: currentBaleRate,
+        hidePrices
       });
-      toast.success('A4 PDF Invoice downloaded successfully!', 'Invoice Saved');
+      toast.success('A4 PDF Order Slip downloaded successfully!', 'Slip Saved');
     } catch (err) {
       console.error('PDF error:', err);
       toast.error('Failed to generate PDF. Please try again.', 'Error');
@@ -316,8 +335,8 @@ export default function OrderLayer({
           {/* Header */}
           <div className="layer-header-bar">
             <div>
-              <h3>Wholesale Purchase Order</h3>
-              <p>Review items, fill company details & export order</p>
+              <h3>Wholesale Purchase Indent</h3>
+              <p>Review items, fill company details & export indent</p>
             </div>
             <button type="button" className="btn-close-layer" onClick={onClose} title="Close Order Form">
               <i className="fa-solid fa-xmark"></i>
@@ -337,7 +356,7 @@ export default function OrderLayer({
                   <div className="empty-cart-notice">
                     <i className="fa-solid fa-cart-arrow-down"></i>
                     <h5>No Items Selected Yet</h5>
-                    <p>Click <strong>"+ Select Item"</strong> on any mat card to build your order.</p>
+                    <p>Click <strong>"+ Select Item"</strong> on any mat card to build your order indent.</p>
                   </div>
                 ) : (
                   selectedProductIds.map((id) => {
@@ -363,9 +382,15 @@ export default function OrderLayer({
                           )}
                           <div className="order-item-meta">
                             <h5 className="order-item-name">{prod.title}</h5>
-                            <span className="order-item-rate">
-                              ₹{prod.baseRate.toLocaleString('en-IN')} / {prod.unit ? prod.unit.replace('per ', '') : 'Bundle'}
-                            </span>
+                            {!hidePrices ? (
+                              <span className="order-item-rate">
+                                ₹{prod.baseRate.toLocaleString('en-IN')} / {prod.unit ? prod.unit.replace('per ', '') : 'Bundle'}
+                              </span>
+                            ) : (
+                              <span className="order-item-rate" style={{ color: 'var(--brand-magenta)' }}>
+                                Wholesale Lot &bull; {prod.unit ? prod.unit.replace('per ', '') : 'Bundle'}
+                              </span>
+                            )}
                           </div>
                         </div>
 
@@ -390,7 +415,13 @@ export default function OrderLayer({
                             </button>
                           </div>
 
-                          <span className="order-item-subtotal">₹{subtotal.toLocaleString('en-IN')}</span>
+                          {!hidePrices ? (
+                            <span className="order-item-subtotal">₹{subtotal.toLocaleString('en-IN')}</span>
+                          ) : (
+                            <span className="order-item-subtotal" style={{ color: 'var(--brand-navy)', fontSize: '0.84rem' }}>
+                              {qty} {prod.unit ? prod.unit.replace('per ', '') : 'Bundle'}(s)
+                            </span>
+                          )}
 
                           <button
                             type="button"
@@ -571,12 +602,14 @@ export default function OrderLayer({
                 <span>Total Ordered Quantity:</span>
                 <strong>{totalUnits} Bundle(s)</strong>
               </div>
-              <div className="calc-row">
-                <span>Products Subtotal:</span>
-                <strong style={{ color: '#031b4e' }}>₹{itemsSubtotal.toLocaleString('en-IN')}</strong>
-              </div>
+              {!hidePrices && (
+                <div className="calc-row">
+                  <span>Products Subtotal:</span>
+                  <strong style={{ color: 'var(--brand-navy)' }}>₹{itemsSubtotal.toLocaleString('en-IN')}</strong>
+                </div>
+              )}
 
-              {/* Master Bale Cost & Read-Only Factory Packing Section */}
+              {/* Master Bale Factory Packing Section */}
               <div className="bale-rate-control-box">
                 <div className="bale-rate-header-row">
                   <span className="bale-rate-label">
@@ -587,23 +620,32 @@ export default function OrderLayer({
                   </strong>
                 </div>
 
-                <div className="calc-row bale-cost-summary-row" style={{ marginTop: '0.6rem' }}>
-                  <span>📦 Factory Packing Charge ({estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/Bale):</span>
-                  <strong className="bale-cost-val">Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
-                </div>
+                {!hidePrices && (
+                  <div className="calc-row bale-cost-summary-row" style={{ marginTop: '0.6rem' }}>
+                    <span>📦 Factory Packing Charge ({estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/Bale):</span>
+                    <strong className="bale-cost-val">Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
+                  </div>
+                )}
               </div>
 
-              <div className="calc-row calc-row-total">
-                <span>Grand Total (Products + Bales):</span>
-                <strong className="calc-grand-total">₹{grandTotal.toLocaleString('en-IN')}</strong>
-              </div>
+              {!hidePrices ? (
+                <div className="calc-row calc-row-total">
+                  <span>Grand Total (Products + Bales):</span>
+                  <strong className="calc-grand-total">₹{grandTotal.toLocaleString('en-IN')}</strong>
+                </div>
+              ) : (
+                <div className="calc-row calc-row-total">
+                  <span>Total Master Bales:</span>
+                  <strong className="calc-grand-total">{estBales} Master {estBales === 1 ? 'Bale' : 'Bales'}</strong>
+                </div>
+              )}
             </div>
 
-            {/* Seasonal Pricing Disclaimer */}
+            {/* Wholesale Note */}
             <div className="order-pricing-disclaimer">
-              <i className="fa-solid fa-tags"></i>
+              <i className="fa-solid fa-industry" style={{ color: 'var(--brand-magenta)' }}></i>
               <span>
-                <strong>Wholesale Note:</strong> Price may differ based on the season item or the stock quantity at dispatch. Final confirmation will be provided with lorry dispatch invoice.
+                <strong>Wholesale Indent Note:</strong> {!hidePrices ? 'Price may differ based on the season item or the stock quantity at dispatch.' : 'Direct factory manufacturer supply from SRI SURYA TEX, ERODE. Submit indent for rapid stock and transport confirmation.'}
               </span>
             </div>
 
@@ -615,7 +657,7 @@ export default function OrderLayer({
                 className="btn-bale-plan"
                 onClick={() => {
                   if (selectedProductIds.length === 0) {
-                    toast.warning('Please select at least 1 mat product to view bale plan.', 'Cart Empty');
+                    toast.warning('Please select at least 1 mat product to view bale plan.', 'Indent Empty');
                     return;
                   }
                   setIsBaleModalOpen(true);
@@ -630,7 +672,7 @@ export default function OrderLayer({
                 className="btn-preview-invoice"
                 onClick={() => {
                   if (selectedProductIds.length === 0) {
-                    toast.warning('Please select at least 1 mat product to view invoice.', 'Cart Empty');
+                    toast.warning('Please select at least 1 mat product to view order slip.', 'Indent Empty');
                     return;
                   }
                   if (!validateAllDetails()) {
@@ -642,7 +684,7 @@ export default function OrderLayer({
                 }}
               >
                 <i className="fa-solid fa-file-invoice"></i>
-                <span>View / Preview Order Invoice</span>
+                <span>{!hidePrices ? 'View / Preview Order Invoice' : 'View / Preview Order Slip'}</span>
               </button>
               <button
                 type="button"
@@ -650,7 +692,7 @@ export default function OrderLayer({
                 onClick={handleWhatsAppSubmit}
               >
                 <i className="fa-brands fa-whatsapp"></i>
-                <span>Send Order via WhatsApp</span>
+                <span>Send Indent via WhatsApp</span>
               </button>
               <button
                 type="button"
@@ -659,7 +701,7 @@ export default function OrderLayer({
                 disabled={isDownloadingPdf}
               >
                 <i className={`fa-solid ${isDownloadingPdf ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
-                <span>{isDownloadingPdf ? 'Generating A4 PDF...' : 'Download PDF Order Invoice'}</span>
+                <span>{isDownloadingPdf ? 'Generating PDF...' : (!hidePrices ? 'Download PDF Order Invoice' : 'Download PDF Order Slip')}</span>
               </button>
             </div>
           </div>

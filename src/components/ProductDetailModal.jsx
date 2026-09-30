@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842686264';
 
 export default function ProductDetailModal({
   product,
@@ -9,8 +9,16 @@ export default function ProductDetailModal({
   isSelected,
   onToggleSelect,
   qty = 1,
-  onUpdateQty
+  onUpdateQty,
+  hidePrices = true
 }) {
+  const [selectedImgIdx, setSelectedImgIdx] = useState(0);
+
+  // Reset selected image when a different product opens
+  useEffect(() => {
+    setSelectedImgIdx(0);
+  }, [product?.id]);
+
   // Close on Escape key press
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -30,6 +38,11 @@ export default function ProductDetailModal({
 
   if (!isOpen || !product) return null;
 
+  const images = (Array.isArray(product.images) && product.images.length > 0)
+    ? product.images
+    : [product.imageUrl || '/assets/logo.jpg'];
+  const currentBigImg = images[selectedImgIdx] || images[0];
+
   const isBulkUnit = (product.unit === 'per Bundle' || product.unit === 'per Dozen') && product.bundlePieces > 0;
   const perPieceRate = isBulkUnit ? Math.round(product.baseRate / product.bundlePieces) : 0;
   const seasonNotice = product.seasonNotice || 'Price may differ based on the season item or the stock quantity';
@@ -39,12 +52,15 @@ export default function ProductDetailModal({
   const subtotal = (product.baseRate || 0) * currentQty;
 
   const handleWhatsAppInquiry = () => {
-    const msg = `*PRODUCT INQUIRY - GOVINDASAMY & CO*\n` +
+    let msg = `*WHOLESALE INQUIRY - SRI SURYA TEX*\n` +
       `📦 *Item*: ${product.title}\n` +
-      `🏷️ *Category*: ${product.category || 'Panipat Mat'}\n` +
-      `💰 *Wholesale Rate*: Rs. ${(product.baseRate || 0).toLocaleString('en-IN')} / ${product.unit ? product.unit.replace('per ', '') : 'Bundle'}\n` +
-      `🔢 *Quantity Interested*: ${currentQty} ${product.unit ? product.unit.replace('per ', '') : 'Bundle'}(s)\n` +
-      `Please let me know current availability & transport dispatch terms.`;
+      `🏷️ *Category*: ${product.category || 'Handloom Mats'}\n`;
+    if (!hidePrices) {
+      msg += `💰 *Wholesale Rate*: Rs. ${(product.baseRate || 0).toLocaleString('en-IN')} / ${product.unit ? product.unit.replace('per ', '') : 'Bundle'}\n`;
+    }
+    msg += `🔢 *Quantity Interested*: ${currentQty} ${product.unit ? product.unit.replace('per ', '') : 'Bundle'}(s)\n` +
+      `📍 *Location*: ERODE - 638 001\n` +
+      `Please confirm availability & transport dispatch terms.`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
@@ -64,17 +80,17 @@ export default function ProductDetailModal({
 
         {/* 2-Column Split: Big Image on Left, Rich Details on Right */}
         <div className="product-detail-split">
-          {/* Left Column: Big Image Display */}
+          {/* Left Column: Big Image Display with 2-4 Photo Gallery */}
           <div className="detail-image-column">
             <div className="detail-image-card">
               <img
-                src={product.imageUrl || '/assets/logo.jpg'}
+                src={currentBigImg}
                 alt={product.title}
                 className="detail-big-image"
                 onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
               />
               <div className="detail-image-badges">
-                <span className="detail-cat-badge">{product.category || 'Panipat Mat'}</span>
+                <span className="detail-cat-badge">{product.category || 'Handloom Mats'}</span>
                 {product.bundlesPerPack && (
                   <span className="detail-bale-badge">
                     <i className="fa-solid fa-cube"></i> 1 Bale = {product.bundlesPerPack} {product.unit === 'per Piece' ? 'Pcs' : 'Bundles'}
@@ -82,8 +98,42 @@ export default function ProductDetailModal({
                 )}
               </div>
             </div>
+
+            {/* 2 to 4 Photo Thumbnails Selector */}
+            {images.length > 1 && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px', justifyContent: 'center' }}>
+                {images.map((imgUrl, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setSelectedImgIdx(idx)}
+                    style={{
+                      width: '56px',
+                      height: '56px',
+                      borderRadius: '8px',
+                      border: selectedImgIdx === idx ? '2px solid #9e2267' : '1.5px solid #cbd5e1',
+                      overflow: 'hidden',
+                      padding: 0,
+                      background: '#ffffff',
+                      cursor: 'pointer',
+                      boxShadow: selectedImgIdx === idx ? '0 0 8px rgba(158, 34, 103, 0.35)' : 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                    title={`View photo ${idx + 1}`}
+                  >
+                    <img
+                      src={imgUrl}
+                      alt={`Thumb ${idx + 1}`}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
+                    />
+                  </button>
+                ))}
+              </div>
+            )}
+
             <p className="detail-image-hint">
-              <i className="fa-solid fa-magnifying-glass-plus"></i> High-resolution wholesale factory product
+              <i className="fa-solid fa-camera" style={{ color: 'var(--brand-magenta)' }}></i> High-resolution wholesale factory product ({images.length} {images.length === 1 ? 'photo' : 'photos'})
             </p>
           </div>
 
@@ -91,7 +141,7 @@ export default function ProductDetailModal({
           <div className="detail-info-column">
             <div className="detail-header-group">
               <div className="detail-meta-strip">
-                <span className="detail-category-tag">{product.category || 'Panipat Mat'}</span>
+                <span className="detail-category-tag">{product.category || 'Handloom Mats'}</span>
                 <span className={`detail-stock-pill ${isOutOfStock ? 'pill-out-of-stock' : 'pill-in-stock'}`}>
                   <i className={`fa-solid ${isOutOfStock ? 'fa-circle-xmark' : 'fa-circle-check'}`}></i>
                   {isOutOfStock ? 'Out of Stock' : 'In Stock'}
@@ -100,21 +150,35 @@ export default function ProductDetailModal({
               <h2 className="detail-product-title">{product.title}</h2>
             </div>
 
-            {/* Wholesale Price Box */}
-            <div className="detail-price-box">
-              <span className="detail-price-label">FACTORY WHOLESALE RATE</span>
-              <div className="detail-price-row">
-                <span className="detail-price-amount">
-                  ₹{(product.baseRate || 0).toLocaleString('en-IN')}
-                </span>
-                <span className="detail-price-unit">/{product.unit ? product.unit.replace('per ', '') : 'Bundle'}</span>
-                {isBulkUnit && (
-                  <span className="detail-per-piece-tag">
-                    (~ ₹{perPieceRate.toLocaleString('en-IN')} / piece)
+            {/* Wholesale Price or Wholesale Indent Box */}
+            {!hidePrices ? (
+              <div className="detail-price-box">
+                <span className="detail-price-label">FACTORY WHOLESALE RATE</span>
+                <div className="detail-price-row">
+                  <span className="detail-price-amount">
+                    ₹{(product.baseRate || 0).toLocaleString('en-IN')}
                   </span>
-                )}
+                  <span className="detail-price-unit">/{product.unit ? product.unit.replace('per ', '') : 'Bundle'}</span>
+                  {isBulkUnit && (
+                    <span className="detail-per-piece-tag">
+                      (~ ₹{perPieceRate.toLocaleString('en-IN')} / piece)
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="detail-price-box" style={{ background: '#fdf4ff', borderColor: '#f5d0fe' }}>
+                <span className="detail-price-label" style={{ color: 'var(--brand-magenta)' }}>DIRECT FACTORY SUPPLY</span>
+                <div className="detail-price-row">
+                  <span style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--brand-navy)' }}>
+                    Wholesale Order Indent
+                  </span>
+                  <span className="detail-price-unit" style={{ color: '#475569' }}>
+                    /{product.unit ? product.unit.replace('per ', '') : 'Bundle'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {/* Tags & Notice List */}
             <div className="detail-tags-stack">
@@ -128,7 +192,7 @@ export default function ProductDetailModal({
               <div className="detail-notice-item notice-amber">
                 <i className="fa-solid fa-circle-info"></i>
                 <span>
-                  <strong>Wholesale Terms:</strong> {seasonNotice}
+                  <strong>Wholesale Terms:</strong> {!hidePrices ? seasonNotice : 'Direct Manufacturer Dispatch from ERODE factory. Inquire for current bulk lot availability.'}
                 </span>
               </div>
             </div>
@@ -156,8 +220,8 @@ export default function ProductDetailModal({
                   </div>
                 )}
                 <div className="spec-row">
-                  <span className="spec-label">Compressibility</span>
-                  <span className="spec-val">80% Standard Heavy Mat</span>
+                  <span className="spec-label">Origin & Dispatch</span>
+                  <span className="spec-val">Erode, Tamil Nadu (SRI SURYA TEX)</span>
                 </div>
               </div>
             </div>
@@ -197,8 +261,19 @@ export default function ProductDetailModal({
                 </div>
 
                 <div className="detail-subtotal-display">
-                  <span className="subtotal-label">Subtotal:</span>
-                  <strong className="subtotal-val">₹{subtotal.toLocaleString('en-IN')}</strong>
+                  {!hidePrices ? (
+                    <>
+                      <span className="subtotal-label">Subtotal:</span>
+                      <strong className="subtotal-val">₹{subtotal.toLocaleString('en-IN')}</strong>
+                    </>
+                  ) : (
+                    <>
+                      <span className="subtotal-label">Indent Quantity:</span>
+                      <strong className="subtotal-val" style={{ color: 'var(--brand-navy)' }}>
+                        {currentQty} {product.unit ? product.unit.replace('per ', '') : 'Bundle'}(s)
+                      </strong>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -220,7 +295,7 @@ export default function ProductDetailModal({
                     onClick={() => onToggleSelect && onToggleSelect(product.id)}
                   >
                     <i className={`fa-solid ${isSelected ? 'fa-check' : 'fa-cart-plus'}`}></i>
-                    <span>{isSelected ? '✓ Selected in Order (Click to Remove)' : '+ Add to Wholesale Order'}</span>
+                    <span>{isSelected ? '✓ Selected in Indent (Click to Remove)' : '+ Add to Wholesale Indent'}</span>
                   </button>
                 )}
 

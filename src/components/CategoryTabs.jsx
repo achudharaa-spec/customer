@@ -9,10 +9,10 @@ export default function CategoryTabs({
 }) {
   const baseCategories = [
     { id: 'ALL', label: 'All Products', icon: 'fa-table-cells-large' },
-    { id: 'Panipat Mat', label: 'Panipat Mat', icon: 'fa-layer-group' },
-    { id: 'Export Mat', label: 'Export Mat', icon: 'fa-globe' },
-    { id: 'Local Mat', label: 'Local Mat', icon: 'fa-location-dot' },
-    { id: 'Long Mat', label: 'Long Mat', icon: 'fa-pen-ruler' }
+    { id: 'Handloom Mats', label: 'Handloom Mats', icon: 'fa-rug' },
+    { id: 'Rubber Mats', label: 'Rubber Mats', icon: 'fa-cubes' },
+    { id: 'Fancy Mats', label: 'Fancy Mats', icon: 'fa-wand-magic-sparkles' },
+    { id: 'Bed Spreads', label: 'Bed Spreads', icon: 'fa-bed' }
   ];
 
   const customTabs = dynamicCategories

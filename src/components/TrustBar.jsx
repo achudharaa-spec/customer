@@ -4,30 +4,24 @@ export default function TrustBar() {
   return (
     <div className="trust-bar">
       <div className="trust-container">
-        <a
-          href="https://maps.app.goo.gl/651k1dFnksLthHSq6"
-          target="_blank"
-          rel="noreferrer"
-          className="trust-item location-link"
-          title="Open Location in Google Maps"
-        >
+        <div className="trust-item location-link">
           <i className="fa-solid fa-location-dot" style={{ color: 'var(--brand-gold)' }}></i>
-          <span>65, Kamaraj St, Erode - 638001, Tamil Nadu, India</span>
-        </a>
+          <span>185, Eswaran Kovil Kidangu Street, ERODE - 638 001</span>
+        </div>
         <div className="trust-divider"></div>
         <div className="trust-item">
           <i className="fa-solid fa-industry" style={{ color: 'var(--brand-navy)' }}></i>
-          <span>Factory Wholesale Rates</span>
+          <span>Direct Manufacturer Supply</span>
         </div>
         <div className="trust-divider"></div>
         <div className="trust-item">
           <i className="fa-solid fa-truck" style={{ color: 'var(--brand-navy)' }}></i>
-          <span>Pan-India Lorry Delivery</span>
+          <span>Pan-India Transport Delivery</span>
         </div>
         <div className="trust-divider"></div>
         <div className="trust-item">
-          <i className="fa-solid fa-leaf" style={{ color: 'var(--brand-gold)' }}></i>
-          <span>Premium Cotton Products</span>
+          <i className="fa-solid fa-certificate" style={{ color: 'var(--brand-magenta)' }}></i>
+          <span>Handloom, Rubber & Fancy Mats</span>
         </div>
       </div>
     </div>

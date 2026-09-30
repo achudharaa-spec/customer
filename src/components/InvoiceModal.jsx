@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { generatePdfInvoice } from '../utils/pdfGenerator';
 import { toast } from '../utils/toast';
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842686264';
 
 export default function InvoiceModal({
   isOpen,
@@ -17,7 +17,8 @@ export default function InvoiceModal({
   itemQuantities,
   packInfo,
   masterBaleRate = 100,
-  onUpdateMasterBaleRate
+  onUpdateMasterBaleRate,
+  hidePrices = true
 }) {
   const invoiceRef = useRef(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -27,7 +28,7 @@ export default function InvoiceModal({
   const custName = name?.trim() || 'Wholesale Buyer';
   const custPhone = phone?.trim() || 'N/A';
   const delAddress = address?.trim() || 'Standard Delivery';
-  const orderRef = `GSC-ORD-${Date.now().toString().slice(-6)}`;
+  const orderRef = `SST-ORD-${Date.now().toString().slice(-6)}`;
   const today = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
 
   // Calculate totals
@@ -46,7 +47,7 @@ export default function InvoiceModal({
     items.push({
       sno: idx + 1,
       title: prod.title,
-      category: prod.category || 'Panipat Mat',
+      category: prod.category || 'Handloom Mats',
       unit: prod.unit ? prod.unit.replace('per ', '') : 'Bundle',
       bundlePieces: prod.bundlePieces || 10,
       qty,
@@ -65,7 +66,7 @@ export default function InvoiceModal({
     if (isDownloading) return;
     try {
       setIsDownloading(true);
-      toast.info('Generating high-resolution A4 Invoice PDF...', 'Please wait');
+      toast.info('Generating high-resolution A4 Order Slip PDF...', 'Please wait');
       await generatePdfInvoice({
         company,
         name,
@@ -77,9 +78,10 @@ export default function InvoiceModal({
         itemQuantities,
         packInfo,
         masterBaleRate: currentBaleRate,
-        invoiceElement: invoiceRef.current
+        invoiceElement: invoiceRef.current,
+        hidePrices
       });
-      toast.success('A4 PDF Invoice downloaded successfully!', 'Invoice Saved');
+      toast.success('A4 PDF Order Slip downloaded successfully!', 'Slip Saved');
     } catch (err) {
       console.error('PDF error:', err);
       toast.error('Failed to generate PDF. Please try again.', 'Error');
@@ -89,19 +91,27 @@ export default function InvoiceModal({
   };
 
   const handleShareWhatsApp = () => {
-    let msg = `*PURCHASE ORDER INVOICE - ${orderRef}*\n`;
+    let msg = `*${!hidePrices ? 'PURCHASE ORDER INVOICE' : 'WHOLESALE ORDER INDENT'} - ${orderRef}*\n`;
     msg += `🏢 *Company*: ${compName}\n`;
     msg += `👤 *Contact*: ${custName} (${custPhone})\n`;
     msg += `📍 *Delivery Address*: ${delAddress}\n`;
     msg += `------------------------------------\n`;
     items.forEach((it) => {
-      msg += `${it.sno}. *${it.title}* - ${it.qty} ${it.unit} @ Rs. ${it.rate.toLocaleString('en-IN')} = Rs. ${it.subtotal.toLocaleString('en-IN')}\n`;
+      if (!hidePrices) {
+        msg += `${it.sno}. *${it.title}* - ${it.qty} ${it.unit} @ Rs. ${it.rate.toLocaleString('en-IN')} = Rs. ${it.subtotal.toLocaleString('en-IN')}\n`;
+      } else {
+        msg += `${it.sno}. *${it.title}* - ${it.qty} ${it.unit}s (${it.qty * it.bundlePieces} pcs)\n`;
+      }
     });
     msg += `------------------------------------\n`;
-    msg += `🏷️ *Products Subtotal*: Rs. ${itemsSubtotal.toLocaleString('en-IN')}\n`;
-    msg += `📦 *Est. Master Bales*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'} @ Rs. ${currentBaleRate}/Bale = Rs. ${masterBaleTotal.toLocaleString('en-IN')}\n`;
-    msg += `💰 *GRAND TOTAL*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
+    msg += `📦 *Total Mat Quantity*: ${totalUnits} Bundle(s)\n`;
+    msg += `📦 *Est. Master Bales*: ${estBales} Master ${estBales === 1 ? 'Bale' : 'Bales'}\n`;
+    if (!hidePrices) {
+      msg += `🏷️ *Products Subtotal*: Rs. ${itemsSubtotal.toLocaleString('en-IN')}\n`;
+      msg += `💰 *GRAND TOTAL*: *Rs. ${grandTotal.toLocaleString('en-IN')}*\n`;
+    }
     msg += `------------------------------------\n`;
+    msg += `SRI SURYA TEX, ERODE - 638 001 • Cell: 98426 86264\n`;
     msg += `Please confirm order availability & dispatch details.`;
 
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
@@ -113,8 +123,8 @@ export default function InvoiceModal({
         {/* Top Floating Control Bar */}
         <div className="invoice-modal-ctrl-bar">
           <div className="invoice-ctrl-title">
-            <i className="fa-solid fa-file-invoice-dollar"></i>
-            <span>Purchase Order Invoice Preview</span>
+            <i className="fa-solid fa-file-invoice"></i>
+            <span>{!hidePrices ? 'Purchase Order Invoice Preview' : 'Wholesale Order Indent Preview'}</span>
           </div>
           <div className="invoice-ctrl-actions">
             <button
@@ -122,7 +132,7 @@ export default function InvoiceModal({
               className="btn-invoice-action btn-invoice-pdf"
               onClick={handleDownloadPdf}
               disabled={isDownloading}
-              title="Download official A4 PDF Invoice"
+              title="Download official A4 PDF Slip"
             >
               <i className={`fa-solid ${isDownloading ? 'fa-spinner fa-spin' : 'fa-file-pdf'}`}></i>
               <span>{isDownloading ? 'Generating PDF...' : 'Download PDF'}</span>
@@ -131,7 +141,7 @@ export default function InvoiceModal({
               type="button"
               className="btn-invoice-action btn-invoice-wa"
               onClick={handleShareWhatsApp}
-              title="Share invoice on WhatsApp"
+              title="Share indent on WhatsApp"
             >
               <i className="fa-brands fa-whatsapp"></i>
               <span>Share WhatsApp</span>
@@ -155,20 +165,22 @@ export default function InvoiceModal({
               <div className="invoice-brand-col">
                 <div className="invoice-brand-main">
                   <img
-                    src="/assets/logo.jpg"
-                    alt="Govindasamy & Co"
+                    src="/assets/logo.png"
+                    alt="Sri Surya Tex"
                     className="invoice-logo"
-                    onError={(e) => { e.target.src = 'https://via.placeholder.com/55?text=GS'; }}
+                    onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
                   />
                   <div>
-                    <h1 className="invoice-company-title">GOVINDASAMY & CO</h1>
-                    <p className="invoice-company-sub">Quality Mat & Textile Products Manufacturer & Wholesaler</p>
+                    <h1 className="invoice-company-title">SRI SURYA TEX</h1>
+                    <p className="invoice-company-sub">Handloom Mats &bull; Rubber Mats &bull; Fancy Mats &bull; Bed Spreads</p>
                   </div>
                 </div>
                 <div className="invoice-contact-strip">
-                  <span><i className="fa-solid fa-envelope"></i> Email: govindasamy.textile@gmail.com</span>
+                  <span><i className="fa-solid fa-phone"></i> Cell: +91 98426 86264</span>
                   <span className="strip-divider">|</span>
-                  <span><i className="fa-solid fa-phone"></i> Phone: +91 98429 32756</span>
+                  <span><i className="fa-solid fa-receipt"></i> GSTIN: 33DBQPM1973N1ZY</span>
+                  <span className="strip-divider">|</span>
+                  <span><i className="fa-solid fa-location-dot"></i> ERODE - 638 001</span>
                 </div>
               </div>
 
@@ -176,15 +188,15 @@ export default function InvoiceModal({
                 <div className="trust-points-col">
                   <div className="trust-point-item">
                     <i className="fa-solid fa-industry"></i>
-                    <span>Factory Wholesale Rates</span>
+                    <span>Direct Factory Supply</span>
                   </div>
                   <div className="trust-point-item">
                     <i className="fa-solid fa-truck-fast"></i>
-                    <span>Pan-India Lorry Delivery</span>
+                    <span>Pan-India Transport Delivery</span>
                   </div>
                   <div className="trust-point-item">
-                    <i className="fa-solid fa-leaf"></i>
-                    <span>Premium Cotton Products</span>
+                    <i className="fa-solid fa-certificate"></i>
+                    <span>Premium Handloom & Mats</span>
                   </div>
                 </div>
                 <div className="trust-mat-deco">
@@ -193,10 +205,10 @@ export default function InvoiceModal({
               </div>
             </div>
 
-            {/* Banner: PURCHASE ORDER INVOICE */}
+            {/* Banner: TITLE */}
             <div className="invoice-title-banner">
               <div className="banner-ornament">❖ —</div>
-              <h2>PURCHASE ORDER INVOICE</h2>
+              <h2>{!hidePrices ? 'PURCHASE ORDER INVOICE' : 'WHOLESALE ORDER INDENT & PACKING SLIP'}</h2>
               <div className="banner-ornament">— ❖</div>
             </div>
 
@@ -243,16 +255,16 @@ export default function InvoiceModal({
               <div className="invoice-info-card">
                 <div className="info-card-badge">
                   <i className="fa-solid fa-clipboard-list"></i>
-                  <span>ORDER DETAILS</span>
+                  <span>INDENT & DISPATCH DETAILS</span>
                 </div>
                 <div className="info-rows-list">
                   <div className="info-row">
-                    <span className="info-label"><i className="fa-solid fa-calendar-day"></i> Order Date</span>
+                    <span className="info-label"><i className="fa-solid fa-calendar-day"></i> Indent Date</span>
                     <span className="info-colon">:</span>
                     <span className="info-val">{today}</span>
                   </div>
                   <div className="info-row">
-                    <span className="info-label"><i className="fa-solid fa-file-invoice"></i> Order Ref</span>
+                    <span className="info-label"><i className="fa-solid fa-file-invoice"></i> Indent Ref</span>
                     <span className="info-colon">:</span>
                     <span className="info-val strong-val">{orderRef}</span>
                   </div>
@@ -276,16 +288,17 @@ export default function InvoiceModal({
                 <thead>
                   <tr>
                     <th style={{ width: '8%' }}>S.No</th>
-                    <th style={{ width: '42%' }}>PRODUCT DESCRIPTION</th>
-                    <th style={{ width: '22%' }}>QUANTITY / PACK</th>
-                    <th style={{ width: '14%', textAlign: 'right' }}>UNIT RATE</th>
-                    <th style={{ width: '14%', textAlign: 'right' }}>SUBTOTAL AMOUNT</th>
+                    <th style={{ width: !hidePrices ? '42%' : '48%' }}>PRODUCT DESCRIPTION</th>
+                    <th style={{ width: !hidePrices ? '22%' : '24%' }}>QUANTITY / PACK</th>
+                    {!hidePrices && <th style={{ width: '14%', textAlign: 'right' }}>UNIT RATE</th>}
+                    {!hidePrices && <th style={{ width: '14%', textAlign: 'right' }}>SUBTOTAL AMOUNT</th>}
+                    {hidePrices && <th style={{ width: '20%', textAlign: 'right' }}>DISPATCH PACKING</th>}
                   </tr>
                 </thead>
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan="5" style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
+                      <td colSpan={!hidePrices ? 5 : 4} style={{ textAlign: 'center', padding: '1.5rem', color: '#94a3b8' }}>
                         No items selected in order
                       </td>
                     </tr>
@@ -321,8 +334,13 @@ export default function InvoiceModal({
                             </div>
                           </div>
                         </td>
-                        <td className="table-rate-cell">Rs. {it.rate.toLocaleString('en-IN')}</td>
-                        <td className="table-subtotal-cell">Rs. {it.subtotal.toLocaleString('en-IN')}</td>
+                        {!hidePrices && <td className="table-rate-cell">Rs. {it.rate.toLocaleString('en-IN')}</td>}
+                        {!hidePrices && <td className="table-subtotal-cell">Rs. {it.subtotal.toLocaleString('en-IN')}</td>}
+                        {hidePrices && (
+                          <td style={{ textAlign: 'right', fontWeight: 600, color: 'var(--brand-navy)' }}>
+                            Factory Lot
+                          </td>
+                        )}
                       </tr>
                     ))
                   )}
@@ -339,29 +357,52 @@ export default function InvoiceModal({
                 <div>
                   <span className="bales-subtext">Est. Master Bales Packaging</span>
                   <strong className="bales-count">{estBales} Master {estBales === 1 ? 'Bale' : 'Bales'}</strong>
-                  <div className="invoice-bale-rate-pill">
-                    <span>@ ₹{currentBaleRate}/Bale = <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong></span>
-                  </div>
+                  {!hidePrices && (
+                    <div className="invoice-bale-rate-pill">
+                      <span>@ ₹{currentBaleRate}/Bale = <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong></span>
+                    </div>
+                  )}
                 </div>
               </div>
 
               <div className="grand-total-col">
-                <div className="invoice-subtotal-line">
-                  <span>Products Subtotal:</span>
-                  <strong>Rs. {itemsSubtotal.toLocaleString('en-IN')}</strong>
-                </div>
-                <div className="invoice-bale-line">
-                  <span>📦 Bale Charges: {estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/bale =</span>
-                  <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
-                </div>
-                <div className="invoice-grand-line">
-                  <span className="grand-total-label">GRAND TOTAL ────</span>
-                  <span className="grand-total-amount">Rs. {grandTotal.toLocaleString('en-IN')}</span>
-                </div>
+                {!hidePrices ? (
+                  <>
+                    <div className="invoice-subtotal-line">
+                      <span>Products Subtotal:</span>
+                      <strong>Rs. {itemsSubtotal.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div className="invoice-bale-line">
+                      <span>📦 Bale Charges: {estBales} {estBales === 1 ? 'Bale' : 'Bales'} @ ₹{currentBaleRate}/bale =</span>
+                      <strong>Rs. {masterBaleTotal.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div className="invoice-grand-line">
+                      <span className="grand-total-label">GRAND TOTAL ────</span>
+                      <span className="grand-total-amount">Rs. {grandTotal.toLocaleString('en-IN')}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="invoice-subtotal-line">
+                      <span>Total Products Selected:</span>
+                      <strong>{items.length} Products</strong>
+                    </div>
+                    <div className="invoice-subtotal-line">
+                      <span>Total Mat Bundles:</span>
+                      <strong>{totalUnits} Bundles</strong>
+                    </div>
+                    <div className="invoice-grand-line">
+                      <span className="grand-total-label">TOTAL PACKING ────</span>
+                      <span className="grand-total-amount" style={{ fontSize: '1.2rem' }}>
+                        {estBales} Master {estBales === 1 ? 'Bale' : 'Bales'}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 
-            {/* Bale Allocation Breakdown — shown when packInfo has bale detail */}
+            {/* Bale Allocation Breakdown */}
             {Array.isArray(packInfo.bales) && packInfo.bales.length > 0 && (
               <div className="invoice-bale-breakdown">
                 <div className="bale-breakdown-header">
@@ -398,7 +439,7 @@ export default function InvoiceModal({
             <div className="invoice-note-box">
               <i className="fa-solid fa-circle-exclamation note-icon"></i>
               <div>
-                <strong>Note:</strong> This is an automated Order Inquiry Invoice generated by Govindasamy & Co. Final rates may vary based on seasonal lot & transport terms.
+                <strong>Note:</strong> Automated Wholesale Order Indent & Packing Slip generated by SRI SURYA TEX. Official lorry dispatch terms and transport confirmation will be provided upon dispatch.
               </div>
             </div>
 
@@ -409,16 +450,16 @@ export default function InvoiceModal({
                   <i className="fa-brands fa-whatsapp"></i>
                 </div>
                 <div>
-                  <p className="wa-callout-text">Please share this PDF or order details to WhatsApp:</p>
-                  <strong className="wa-phone-highlight">+91 98429 32756</strong>
-                  <p className="wa-sub-text">for payment & lorry transport confirmation.</p>
+                  <p className="wa-callout-text">Share this Order Slip or details to WhatsApp:</p>
+                  <strong className="wa-phone-highlight">+91 98426 86264</strong>
+                  <p className="wa-sub-text">P. MYILSAMY &bull; SRI SURYA TEX for transport & stock dispatch.</p>
                 </div>
               </div>
 
               <div className="wa-qr-col">
                 <div className="qr-box-inner">
                   <img
-                    src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(`https://wa.me/919842932756?text=OrderRef:${orderRef}`)}`}
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=${encodeURIComponent(`https://wa.me/919842686264?text=OrderRef:${orderRef}`)}`}
                     alt="WhatsApp QR Code"
                     className="qr-img"
                   />
@@ -427,16 +468,16 @@ export default function InvoiceModal({
               </div>
             </div>
 
-            {/* Footer Bar - Plain text without icons as requested */}
+            {/* Footer Bar */}
             <div className="invoice-footer-bar">
               <div className="footer-bar-item">
-                <span>65, Kamaraj St, Erode - 638001, Tamil Nadu, India</span>
+                <span>185, Eswaran Kovil Kidangu Street, ERODE - 638 001</span>
               </div>
               <div className="footer-bar-item footer-brand-center">
-                <strong>GS & CO • GOVINDASAMY & CO</strong>
+                <strong>SRI SURYA TEX • P. MYILSAMY</strong>
               </div>
               <div className="footer-bar-item footer-trust-right">
-                <span>Thank you for your trust in our quality & service.</span>
+                <span>GSTIN: 33DBQPM1973N1ZY • Cell: 98426 86264</span>
               </div>
             </div>
           </div>

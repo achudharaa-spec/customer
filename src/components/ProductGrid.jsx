@@ -10,7 +10,8 @@ export default function ProductGrid({
   activeCategory,
   searchQuery,
   sortOption = 'default',
-  setSortOption
+  setSortOption,
+  hidePrices = true
 }) {
   const filtered = useMemo(() => {
     const searchLower = (searchQuery || '').toLowerCase().trim();
@@ -31,16 +32,19 @@ export default function ProductGrid({
       if (aDisabled && !bDisabled) return 1;  // Disabled item moved to last
       if (!aDisabled && bDisabled) return -1; // Enabled item kept in front
 
-      if (sortOption === 'price-low') {
-        return a.baseRate - b.baseRate;
-      } else if (sortOption === 'price-high') {
-        return b.baseRate - a.baseRate;
-      } else if (sortOption === 'stock') {
+      if (!hidePrices) {
+        if (sortOption === 'price-low') {
+          return a.baseRate - b.baseRate;
+        } else if (sortOption === 'price-high') {
+          return b.baseRate - a.baseRate;
+        }
+      }
+      if (sortOption === 'stock') {
         return (b.stockQty || 0) - (a.stockQty || 0);
       }
       return 0;
     });
-  }, [products, activeCategory, searchQuery, sortOption]);
+  }, [products, activeCategory, searchQuery, sortOption, hidePrices]);
 
   return (
     <section className="catalog-products-section">
@@ -62,19 +66,23 @@ export default function ProductGrid({
               onChange={(e) => setSortOption(e.target.value)}
             >
               <option value="default">Default Order</option>
-              <option value="price-low">Price: Low to High</option>
-              <option value="price-high">Price: High to Low</option>
+              {!hidePrices && <option value="price-low">Price: Low to High</option>}
+              {!hidePrices && <option value="price-high">Price: High to Low</option>}
               <option value="stock">Stock Quantity</option>
             </select>
           </div>
         )}
       </div>
 
-      {/* Light Blue Wholesale Pricing Notice Banner from Reference */}
+      {/* Wholesale Notice Banner */}
       <div className="pricing-notice-box">
         <i className="fa-solid fa-circle-info"></i>
         <span>
-          <strong>Wholesale Pricing Notice:</strong> Quoted rates are factory standard wholesale rates. Final rates may vary based on order quantity, destination & delivery terms.
+          {!hidePrices ? (
+            <><strong>Wholesale Pricing Notice:</strong> Quoted rates are factory standard wholesale rates. Final rates may vary based on order quantity, destination & delivery terms.</>
+          ) : (
+            <><strong>Wholesale Indent Notice:</strong> Direct manufacturer supply from ERODE factory. Select mat items and quantities to generate your wholesale order indent.</>
+          )}
         </span>
       </div>
 
@@ -94,6 +102,7 @@ export default function ProductGrid({
               isSelected={selectedProductIds.includes(product.id)}
               onToggleSelect={onToggleSelect}
               onOpenDetail={onOpenDetail}
+              hidePrices={hidePrices}
             />
           ))
         )}

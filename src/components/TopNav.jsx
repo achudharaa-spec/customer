@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 
-const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756';
+const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842686264';
 
 export default function TopNav({
   searchQuery,
@@ -14,10 +14,10 @@ export default function TopNav({
 
   const categories = [
     { id: 'ALL', label: 'All Products', icon: 'fa-table-cells-large' },
-    { id: 'Panipat Mat', label: 'Panipat Mat', icon: 'fa-layer-group' },
-    { id: 'Export Mat', label: 'Export Mat', icon: 'fa-globe' },
-    { id: 'Local Mat', label: 'Local Mat', icon: 'fa-location-dot' },
-    { id: 'Long Mat', label: 'Long Mat', icon: 'fa-pen-ruler' }
+    { id: 'Handloom Mats', label: 'Handloom Mats', icon: 'fa-rug' },
+    { id: 'Rubber Mats', label: 'Rubber Mats', icon: 'fa-cubes' },
+    { id: 'Fancy Mats', label: 'Fancy Mats', icon: 'fa-wand-magic-sparkles' },
+    { id: 'Bed Spreads', label: 'Bed Spreads', icon: 'fa-bed' }
   ];
 
   return (
@@ -38,16 +38,16 @@ export default function TopNav({
           <div className="brand-group">
             <div className="logo-wrapper">
               <img
-                src="/assets/logo.jpg"
-                alt="Govindasamy & Co Logo"
+                src="/assets/logo.png"
+                alt="Sri Surya Tex Logo"
                 className="brand-logo"
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
               />
             </div>
             <div className="brand-titles">
-              <h1>GOVINDASAMY & CO</h1>
+              <h1>SRI SURYA TEX</h1>
               <span className="brand-tagline">
-                Quality Mat & Textile Products Manufacturer & Wholesaler
+                Handloom, Rubber & Fancy Mats &bull; Bed Spreads
               </span>
             </div>
           </div>
@@ -80,11 +80,11 @@ export default function TopNav({
               type="button"
               className="btn btn-header-order"
               onClick={onOpenOrderLayer}
-              title={`View Order Form (${selectedCount} items)`}
+              title={`View Order Indent (${selectedCount} items)`}
             >
               <i className="fa-solid fa-clipboard-list"></i>
-              <span className="btn-order-text-desktop">Order Form ({selectedCount})</span>
-              <span className="btn-order-text-mobile">Order ({selectedCount})</span>
+              <span className="btn-order-text-desktop">Order Indent ({selectedCount})</span>
+              <span className="btn-order-text-mobile">Indent ({selectedCount})</span>
             </button>
 
             {/* WhatsApp Direct Chat Button */}
@@ -93,7 +93,7 @@ export default function TopNav({
               target="_blank"
               rel="noreferrer"
               className="btn btn-whatsapp-header"
-              title="Chat with Wholesale Sales on WhatsApp"
+              title="Chat with P. Myilsamy on WhatsApp"
             >
               <i className="fa-brands fa-whatsapp"></i>
               <span className="btn-whatsapp-text-desktop">WhatsApp</span>
@@ -135,14 +135,15 @@ export default function TopNav({
             <div className="mobile-menu-header">
               <div className="brand-group">
                 <img
-                  src="/assets/logo.jpg"
-                  alt="Govindasamy & Co"
+                  src="/assets/logo.png"
+                  alt="Sri Surya Tex"
                   className="brand-logo"
                   style={{ width: '40px', height: '40px' }}
+                  onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
                 />
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', color: 'var(--brand-navy)', fontWeight: 800 }}>GOVINDASAMY & CO</h3>
-                  <span style={{ fontSize: '0.72rem', color: '#64748b' }}>Erode, Tamil Nadu</span>
+                  <h3 style={{ fontSize: '1.1rem', color: 'var(--brand-navy)', fontWeight: 800 }}>SRI SURYA TEX</h3>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--brand-magenta)', fontWeight: 700 }}>P. MYILSAMY &bull; 98426 86264</span>
                 </div>
               </div>
               <button
@@ -176,18 +177,14 @@ export default function TopNav({
 
               <h4 className="mobile-menu-subtitle" style={{ marginTop: '1.5rem' }}>Factory & Location</h4>
               <div className="mobile-menu-info-card">
-                <a
-                  href="https://maps.app.goo.gl/651k1dFnksLthHSq6"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="mobile-location-link"
-                >
+                <div className="mobile-location-link">
                   <i className="fa-solid fa-location-dot" style={{ color: 'var(--brand-gold)' }}></i>
                   <div>
-                    <strong>Factory & Store:</strong>
-                    <p>65, Kamaraj St, NMS Compound, Erode Fort, Erode - 638001</p>
+                    <strong>SRI SURYA TEX</strong>
+                    <p style={{ margin: '2px 0' }}>185, Eswaran Kovil Kidangu Street, ERODE - 638 001</p>
+                    <p style={{ margin: '2px 0', fontSize: '0.72rem', color: '#64748b' }}>GSTIN: 33DBQPM1973N1ZY &bull; Cell: 98426 86264</p>
                   </div>
-                </a>
+                </div>
               </div>
 
               <div style={{ marginTop: '1.5rem' }}>

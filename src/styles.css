@@ -11,16 +11,23 @@
   --border-color: #e2e8f0;
   --border-subtle: #f1f5f9;
 
-  /* Dark Blue Palette (replacing green) */
-  --brand-navy: #031b4e;
-  --brand-navy-deep: #021235;
-  --brand-navy-light: #0a2558;
-  --brand-blue-accent: #1e3a8a;
+  /* SST Logo Color Palette */
+  --brand-navy: #15244c;
+  --brand-navy-deep: #0e1834;
+  --brand-navy-light: #1e3368;
+  --brand-blue-accent: #295674;
   
-  /* Gold & Warm Accents */
-  --brand-gold: #d97706;
-  --brand-gold-glow: rgba(217, 119, 6, 0.25);
-  --brand-amber: #b45309;
+  /* Berry Magenta & Card Accents from Logo */
+  --brand-magenta: #9e2267;
+  --brand-magenta-deep: #7d154f;
+  --brand-magenta-light: #c02672;
+  --brand-magenta-glow: rgba(158, 34, 103, 0.25);
+
+  /* Gold & Warm Bronze Accents from Logo */
+  --brand-gold: #c89a4b;
+  --brand-gold-glow: rgba(200, 154, 75, 0.25);
+  --brand-amber: #b07d2b;
+  --brand-teal: #295674;
 
   /* Dedicated WhatsApp */
   --whatsapp-green: #25d366;

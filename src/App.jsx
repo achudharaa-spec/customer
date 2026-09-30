@@ -12,11 +12,20 @@ import OrderLayer from './components/OrderLayer';
 import InvoiceModal from './components/InvoiceModal';
 import ModernToastContainer from './components/ModernToastContainer';
 import { calculateMasterPacks } from './utils/packetEngine';
+import { INITIAL_PRODUCTS } from './data/initialProducts';
 import './styles.css';
 
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:10000';
+
 export default function App() {
-  const [products, setProducts] = useState([]);
-  const [isLoadingCatalog, setIsLoadingCatalog] = useState(true);
+  const [products, setProducts] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('gsco_catalog_products') || '[]');
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    } catch (_) {}
+    return INITIAL_PRODUCTS;
+  });
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [itemQuantities, setItemQuantities] = useState({});
   const [activeCategory, setActiveCategory] = useState('ALL');
@@ -27,7 +36,15 @@ export default function App() {
   const [isOrderLayerOpen, setIsOrderLayerOpen] = useState(false);
   const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
   const [invoiceData, setInvoiceData] = useState({});
-  const [masterBaleRate, setMasterBaleRate] = useState(100); // Default ₹100 / Master Bale (Re-editable)
+  const [masterBaleRate, setMasterBaleRate] = useState(100); // Default ₹100 / Master Bale
+  const [hidePrices, setHidePrices] = useState(() => {
+    try {
+      const cached = localStorage.getItem('sst_hide_prices');
+      return cached !== null ? cached === 'true' : true;
+    } catch (_) {
+      return true;
+    }
+  });
 
   // Calculate master packs and totals
   const packInfo = calculateMasterPacks(selectedProductIds, products, itemQuantities);
@@ -36,14 +53,72 @@ export default function App() {
   selectedProductIds.forEach((id) => {
     const prod = products.find((p) => p.id === id);
     const qty = itemQuantities[id] || 1;
-    if (prod) itemsSubtotal += prod.baseRate * qty;
+    if (prod) itemsSubtotal += (prod.baseRate || 0) * qty;
   });
   const estBales = packInfo.estPacks || 0;
   const masterBaleTotal = estBales * (Number(masterBaleRate) >= 0 ? Number(masterBaleRate) : 100);
   const grandTotal = itemsSubtotal + masterBaleTotal;
 
   useEffect(() => {
-    // 1. Listen to real-time events across tabs from Admin
+    // 1. Fetch live products from Centralized Server API
+    fetch(`${SERVER_URL}/api/products`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((serverProducts) => {
+        if (Array.isArray(serverProducts) && serverProducts.length > 0) {
+          setProducts(serverProducts);
+          localStorage.setItem('gsco_catalog_products', JSON.stringify(serverProducts));
+        }
+      })
+      .catch((err) => console.info('Server catalog sync info:', err.message));
+
+    // 2. Fetch live store config (hidePrices) from Server API
+    fetch(`${SERVER_URL}/api/settings/store_config`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((cfg) => {
+        if (cfg && cfg.hidePrices !== undefined) {
+          setHidePrices(Boolean(cfg.hidePrices));
+          localStorage.setItem('sst_hide_prices', cfg.hidePrices ? 'true' : 'false');
+        }
+      })
+      .catch((err) => console.info('Server store config sync info:', err.message));
+
+    // 3. Connect to Server-Sent Events (SSE) stream for instant cross-port real-time updates
+    let eventSource;
+    try {
+      eventSource = new EventSource(`${SERVER_URL}/api/events`);
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'PRODUCT_ADDED') {
+            setProducts((prev) => {
+              if (prev.some((p) => p.id === data.product.id)) return prev;
+              const updated = [data.product, ...prev];
+              localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
+              return updated;
+            });
+          } else if (data.type === 'PRODUCT_UPDATED') {
+            setProducts((prev) => {
+              const updated = prev.map((p) => (p.id === data.product.id ? { ...p, ...data.product } : p));
+              localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
+              return updated;
+            });
+          } else if (data.type === 'PRODUCT_DELETED') {
+            setProducts((prev) => {
+              const updated = prev.filter((p) => p.id !== data.productId);
+              localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
+              return updated;
+            });
+          } else if (data.type === 'STORE_CONFIG_UPDATED') {
+            if (data.hidePrices !== undefined) {
+              setHidePrices(Boolean(data.hidePrices));
+              localStorage.setItem('sst_hide_prices', data.hidePrices ? 'true' : 'false');
+            }
+          }
+        } catch (_) {}
+      };
+    } catch (_) {}
+
+    // 4. Listen to real-time events across tabs within the same origin
     let channel;
     if (typeof window !== 'undefined' && window.BroadcastChannel) {
       channel = new BroadcastChannel('gsco_realtime_channel');
@@ -64,26 +139,32 @@ export default function App() {
           if (event.data.rate !== undefined) {
             setMasterBaleRate(Number(event.data.rate));
           }
+        } else if (event.data?.type === 'PRICES_VISIBILITY_UPDATED' || event.data?.type === 'SETTINGS_UPDATED' || event.data?.type === 'STORE_CONFIG_UPDATED') {
+          if (event.data.hidePrices !== undefined) {
+            setHidePrices(Boolean(event.data.hidePrices));
+          }
         }
       };
     }
 
-    // 2. Live sync products strictly 1-to-1 from Firestore (NO MOCK DATA)
+    // 5. Live sync products from Firestore
     const productsRef = collection(db, 'products');
     const unsubscribeProducts = onSnapshot(productsRef, (snapshot) => {
       const fetched = snapshot.docs.map((docSnap) => ({
         id: docSnap.id,
         ...docSnap.data()
       }));
-      setProducts(fetched);
+      if (fetched.length > 0) {
+        setProducts(fetched);
+        localStorage.setItem('gsco_catalog_products', JSON.stringify(fetched));
+      }
       setIsLoadingCatalog(false);
-      localStorage.setItem('gsco_catalog_products', JSON.stringify(fetched));
     }, (error) => {
       console.warn('Firestore customer sync info:', error.message);
       setIsLoadingCatalog(false);
     });
 
-    // 3. Live sync custom categories from Firestore
+    // 6. Live sync custom categories from Firestore
     const categoriesRef = collection(db, 'categories');
     const unsubscribeCategories = onSnapshot(categoriesRef, (snapshot) => {
       const cats = snapshot.docs.map((d) => d.data().name).filter(Boolean);
@@ -94,7 +175,7 @@ export default function App() {
       console.warn('Firestore categories sync info:', error.message);
     });
 
-    // 4. Live sync global master bale rate from Firestore
+    // 7. Live sync global master bale rate from Firestore
     const configRef = doc(db, 'settings', 'master_bale_config');
     const unsubscribeConfig = onSnapshot(configRef, (snapshot) => {
       if (snapshot.exists()) {
@@ -107,10 +188,25 @@ export default function App() {
       console.warn('Firestore master bale config sync info:', error.message);
     });
 
+    // 8. Live sync store price visibility config from Firestore
+    const storeConfigRef = doc(db, 'settings', 'store_config');
+    const unsubscribeStoreConfig = onSnapshot(storeConfigRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        if (data.hidePrices !== undefined) {
+          setHidePrices(Boolean(data.hidePrices));
+        }
+      }
+    }, (error) => {
+      console.warn('Firestore store config sync info:', error.message);
+    });
+
     return () => {
+      if (eventSource) eventSource.close();
       unsubscribeProducts();
       unsubscribeCategories();
       unsubscribeConfig();
+      unsubscribeStoreConfig();
       if (channel) channel.close();
     };
   }, []);
@@ -163,6 +259,7 @@ export default function App() {
           dynamicCategories={dynamicCategories}
           sortOption={sortOption}
           setSortOption={setSortOption}
+          hidePrices={hidePrices}
         />
 
         {isLoadingCatalog ? (
@@ -180,6 +277,7 @@ export default function App() {
             searchQuery={searchQuery}
             sortOption={sortOption}
             setSortOption={setSortOption}
+            hidePrices={hidePrices}
           />
         )}
       </main>
@@ -188,9 +286,10 @@ export default function App() {
         selectedCount={selectedProductIds.length}
         grandTotal={grandTotal}
         onOpenOrderLayer={() => setIsOrderLayerOpen(true)}
+        hidePrices={hidePrices}
       />
 
-      {/* Product Detail / Zoom Modal (Half Page Split on Desktop, Bottom Sheet on Mobile with X Close Mark) */}
+      {/* Product Detail / Zoom Modal with 2-4 Photo Carousel & Zero-Price Trace */}
       <ProductDetailModal
         product={activeProductDetail}
         isOpen={Boolean(activeProductDetail)}
@@ -199,6 +298,7 @@ export default function App() {
         onToggleSelect={handleToggleSelect}
         qty={activeProductDetail ? (itemQuantities[activeProductDetail.id] || 1) : 1}
         onUpdateQty={handleUpdateQty}
+        hidePrices={hidePrices}
       />
 
       <OrderLayer
@@ -211,13 +311,14 @@ export default function App() {
         onRemoveItem={handleRemoveItem}
         masterBaleRate={masterBaleRate}
         onUpdateMasterBaleRate={setMasterBaleRate}
+        hidePrices={hidePrices}
         onOpenInvoicePreview={(data) => {
           setInvoiceData(data);
           setIsInvoiceModalOpen(true);
         }}
       />
 
-      {/* Modern Responsive Purchase Order Invoice Modal */}
+      {/* Modern Responsive Purchase Order Invoice / Wholesale Indent Modal */}
       <InvoiceModal
         isOpen={isInvoiceModalOpen}
         onClose={() => setIsInvoiceModalOpen(false)}
@@ -232,50 +333,51 @@ export default function App() {
         packInfo={packInfo}
         masterBaleRate={masterBaleRate}
         onUpdateMasterBaleRate={setMasterBaleRate}
+        hidePrices={hidePrices}
       />
 
-      {/* Two-Tier Wholesale Footer from Reference Image */}
+      {/* Wholesale Footer with SRI SURYA TEX visiting card details */}
       <footer className="main-footer">
         <div className="footer-top-tier">
           <div className="footer-container">
             {/* Brand block */}
             <div className="footer-brand">
               <img
-                src="/assets/logo.jpg"
-                alt="Govindasamy & Co"
+                src="/assets/logo.png"
+                alt="SRI SURYA TEX"
                 className="footer-logo"
-                onError={(e) => { e.target.style.display = 'none'; }}
+                onError={(e) => { e.target.src = '/assets/logo.jpg'; }}
               />
               <div>
-                <h4>GOVINDASAMY & CO</h4>
-                <p>Quality Mat & Textile Products Manufacturer & Wholesaler</p>
+                <h4>SRI SURYA TEX</h4>
+                <p>Prop: P. MYILSAMY • Handloom Mats, Rubber Mats, Fancy Mats, Bed Spreads</p>
               </div>
             </div>
 
             {/* Address */}
             <div className="footer-col footer-col-address">
-              <a href="https://maps.app.goo.gl/651k1dFnksLthHSq6" target="_blank" rel="noreferrer">
+              <a href="https://maps.google.com/?q=185+Eswaran+Kovil+Kidangu+Street+Erode" target="_blank" rel="noreferrer">
                 <i className="fa-solid fa-location-dot"></i>
-                <span>65, Kamaraj St, Erode - 638001<br />Tamil Nadu, India</span>
+                <span>185, Eswaran Kovil Kidangu Street<br />ERODE - 638 001, Tamil Nadu</span>
               </a>
             </div>
 
-            {/* Contacts */}
+            {/* Contacts & GSTIN */}
             <div className="footer-col footer-col-contacts">
               <p>
-                <i className="fa-solid fa-envelope"></i>
-                <span>{import.meta.env.VITE_STORE_EMAIL || 'govindasamy.textitle@gmail.com'}</span>
+                <i className="fa-solid fa-phone"></i>
+                <span>Cell: <strong>98426 86264</strong></span>
               </p>
               <p>
-                <i className="fa-solid fa-phone"></i>
-                <span>+91 98427 12345</span>
+                <i className="fa-solid fa-receipt"></i>
+                <span>GSTIN: <strong>33DBQPM1973N1ZY</strong></span>
               </p>
             </div>
 
             {/* WhatsApp Inquiry Pill */}
             <div className="footer-action-col">
               <a
-                href={`https://wa.me/${import.meta.env.VITE_WHATSAPP_NUMBER || '919842932756'}`}
+                href="https://wa.me/919842686264"
                 target="_blank"
                 rel="noreferrer"
                 className="btn-whatsapp-footer"
@@ -287,9 +389,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* Bottom Dark Blue Copyright Strip */}
+        {/* Bottom Dark Copyright Strip */}
         <div className="footer-bottom-strip">
-          <p>© 2026 Govindasamy & Co. All Rights Reserved. • Powered by React & Firebase Firestore Sync</p>
+          <p>© 2026 SRI SURYA TEX (ERODE). All Rights Reserved. • Handloom & Textile Wholesaler</p>
         </div>
       </footer>
     </div>
