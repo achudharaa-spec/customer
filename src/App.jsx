@@ -15,7 +15,8 @@ import { calculateMasterPacks } from './utils/packetEngine';
 import { INITIAL_PRODUCTS } from './data/initialProducts';
 import './styles.css';
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:10000';
+const IS_HTTPS = typeof window !== 'undefined' && window.location.protocol === 'https:';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || (IS_HTTPS ? '' : 'http://localhost:10000');
 
 export default function App() {
   const [products, setProducts] = useState(() => {
@@ -60,63 +61,65 @@ export default function App() {
   const grandTotal = itemsSubtotal + masterBaleTotal;
 
   useEffect(() => {
-    // 1. Fetch live products from Centralized Server API
-    fetch(`${SERVER_URL}/api/products`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((serverProducts) => {
-        if (Array.isArray(serverProducts) && serverProducts.length > 0) {
-          setProducts(serverProducts);
-          localStorage.setItem('gsco_catalog_products', JSON.stringify(serverProducts));
-        }
-      })
-      .catch((err) => console.info('Server catalog sync info:', err.message));
-
-    // 2. Fetch live store config (hidePrices) from Server API
-    fetch(`${SERVER_URL}/api/settings/store_config`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((cfg) => {
-        if (cfg && cfg.hidePrices !== undefined) {
-          setHidePrices(Boolean(cfg.hidePrices));
-          localStorage.setItem('sst_hide_prices', cfg.hidePrices ? 'true' : 'false');
-        }
-      })
-      .catch((err) => console.info('Server store config sync info:', err.message));
-
-    // 3. Connect to Server-Sent Events (SSE) stream for instant cross-port real-time updates
     let eventSource;
-    try {
-      eventSource = new EventSource(`${SERVER_URL}/api/events`);
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          if (data.type === 'PRODUCT_ADDED') {
-            setProducts((prev) => {
-              if (prev.some((p) => p.id === data.product.id)) return prev;
-              const updated = [data.product, ...prev];
-              localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
-              return updated;
-            });
-          } else if (data.type === 'PRODUCT_UPDATED') {
-            setProducts((prev) => {
-              const updated = prev.map((p) => (p.id === data.product.id ? { ...p, ...data.product } : p));
-              localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
-              return updated;
-            });
-          } else if (data.type === 'PRODUCT_DELETED') {
-            setProducts((prev) => {
-              const updated = prev.filter((p) => p.id !== data.productId);
-              localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
-              return updated;
-            });
-          } else if (data.type === 'STORE_CONFIG_UPDATED') {
-            if (data.hidePrices !== undefined) {
-              setHidePrices(Boolean(data.hidePrices));
-              localStorage.setItem('sst_hide_prices', data.hidePrices ? 'true' : 'false');
-            }
+    if (SERVER_URL) {
+      // 1. Fetch live products from Centralized Server API
+      fetch(`${SERVER_URL}/api/products`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((serverProducts) => {
+          if (Array.isArray(serverProducts) && serverProducts.length > 0) {
+            setProducts(serverProducts);
+            localStorage.setItem('gsco_catalog_products', JSON.stringify(serverProducts));
           }
-        } catch (_) {}
-      };
-    } catch (_) {}
+        })
+        .catch((err) => console.info('Server catalog sync info:', err.message));
+
+      // 2. Fetch live store config (hidePrices) from Server API
+      fetch(`${SERVER_URL}/api/settings/store_config`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((cfg) => {
+          if (cfg && cfg.hidePrices !== undefined) {
+            setHidePrices(Boolean(cfg.hidePrices));
+            localStorage.setItem('sst_hide_prices', cfg.hidePrices ? 'true' : 'false');
+          }
+        })
+        .catch((err) => console.info('Server store config sync info:', err.message));
+
+      // 3. Connect to Server-Sent Events (SSE) stream
+      try {
+        eventSource = new EventSource(`${SERVER_URL}/api/events`);
+        eventSource.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.type === 'PRODUCT_ADDED') {
+              setProducts((prev) => {
+                if (prev.some((p) => p.id === data.product.id)) return prev;
+                const updated = [data.product, ...prev];
+                localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
+                return updated;
+              });
+            } else if (data.type === 'PRODUCT_UPDATED') {
+              setProducts((prev) => {
+                const updated = prev.map((p) => (p.id === data.product.id ? { ...p, ...data.product } : p));
+                localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
+                return updated;
+              });
+            } else if (data.type === 'PRODUCT_DELETED') {
+              setProducts((prev) => {
+                const updated = prev.filter((p) => p.id !== data.productId);
+                localStorage.setItem('gsco_catalog_products', JSON.stringify(updated));
+                return updated;
+              });
+            } else if (data.type === 'STORE_CONFIG_UPDATED') {
+              if (data.hidePrices !== undefined) {
+                setHidePrices(Boolean(data.hidePrices));
+                localStorage.setItem('sst_hide_prices', data.hidePrices ? 'true' : 'false');
+              }
+            }
+          } catch (_) {}
+        };
+      } catch (_) {}
+    }
 
     // 4. Listen to real-time events across tabs within the same origin
     let channel;

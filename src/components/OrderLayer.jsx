@@ -7,7 +7,8 @@ import { sanitizeInput, orderRateLimiter } from '../utils/security';
 import BalePackingModal from './BalePackingModal';
 
 const WHATSAPP_NUMBER = import.meta.env.VITE_WHATSAPP_NUMBER || '919842686264';
-const SERVER_URL = import.meta.env.VITE_SERVER_URL || 'http://localhost:10000';
+const IS_HTTPS = typeof window !== 'undefined' && window.location.protocol === 'https:';
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || (IS_HTTPS ? '' : 'http://localhost:10000');
 
 export default function OrderLayer({
   isOpen,
@@ -233,11 +234,13 @@ export default function OrderLayer({
       }
 
       // Broadcast order across tabs and via Central Server SSE
-      fetch(`${SERVER_URL}/api/orders`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: docRef.id, ...orderPayload })
-      }).catch((e) => console.info('Server order sync notice:', e.message));
+      if (SERVER_URL) {
+        fetch(`${SERVER_URL}/api/orders`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: docRef.id, ...orderPayload })
+        }).catch((e) => console.info('Server order sync notice:', e.message));
+      }
 
       if (typeof window !== 'undefined' && window.BroadcastChannel) {
         const channel = new BroadcastChannel('gsco_realtime_channel');
