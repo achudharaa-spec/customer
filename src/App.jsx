@@ -12,7 +12,6 @@ import OrderLayer from './components/OrderLayer';
 import InvoiceModal from './components/InvoiceModal';
 import ModernToastContainer from './components/ModernToastContainer';
 import { calculateMasterPacks } from './utils/packetEngine';
-import { INITIAL_PRODUCTS } from './data/initialProducts';
 import './styles.css';
 
 const IS_HTTPS = typeof window !== 'undefined' && window.location.protocol === 'https:';
@@ -24,9 +23,16 @@ export default function App() {
       const cached = JSON.parse(localStorage.getItem('gsco_catalog_products') || '[]');
       if (Array.isArray(cached) && cached.length > 0) return cached;
     } catch (_) {}
-    return INITIAL_PRODUCTS;
+    return [];
   });
-  const [isLoadingCatalog, setIsLoadingCatalog] = useState(false);
+  const [isLoadingCatalog, setIsLoadingCatalog] = useState(() => {
+    try {
+      const cached = JSON.parse(localStorage.getItem('gsco_catalog_products') || '[]');
+      return !(Array.isArray(cached) && cached.length > 0);
+    } catch (_) {
+      return true;
+    }
+  });
   const [selectedProductIds, setSelectedProductIds] = useState([]);
   const [itemQuantities, setItemQuantities] = useState({});
   const [activeCategory, setActiveCategory] = useState('ALL');
