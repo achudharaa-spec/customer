@@ -194,7 +194,9 @@ export default function App() {
       if (snapshot.exists()) {
         const data = snapshot.data();
         if (data.hidePrices !== undefined) {
-          setHidePrices(Boolean(data.hidePrices));
+          const nextHide = Boolean(data.hidePrices);
+          setHidePrices(nextHide);
+          localStorage.setItem('sst_hide_prices', nextHide ? 'true' : 'false');
         }
       }
     }, (error) => {
